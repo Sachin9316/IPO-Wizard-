@@ -18,6 +18,7 @@ export interface IPOData {
         refund: string;
         listing: string;
     };
+    isAllotmentOut?: boolean;
 }
 
 const generateIPO = (id: string, name: string, type: 'Mainboard' | 'SME', status: 'Open' | 'Closed' | 'Upcoming'): IPOData => {

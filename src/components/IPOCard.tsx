@@ -25,40 +25,71 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
         <TouchableOpacity
             style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => onPress(item)}
-            activeOpacity={0.7}
+            activeOpacity={0.9}
         >
-            <View style={styles.topRow}>
-                <View style={styles.titleContainer}>
-                    <View style={[styles.logoPlaceholder, { backgroundColor: colors.border }]}>
-                        <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>IMG</Text>
-                    </View>
-                    <View>
-                        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                        <Text style={[styles.subTitle, { color: colors.text, opacity: 0.6 }]}>{item.type}</Text>
-                    </View>
+            <View style={styles.header}>
+                <View style={styles.logoContainer}>
+                    {item.logoUrl ? (
+                        <View style={[styles.logoplaceholder, { backgroundColor: colors.border }]}>
+                            {/* In real app, use Image here */}
+                            <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>LOGO</Text>
+                        </View>
+                    ) : (
+                        <View style={[styles.logoplaceholder, { backgroundColor: colors.border }]}>
+                            <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>IMG</Text>
+                        </View>
+                    )}
                 </View>
-                <View style={[styles.badgeContainer, { backgroundColor: getStatusColor(item.status) + '15' }]}>
-                    <Text style={[styles.statusBadge, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+
+                <View style={styles.headerContent}>
+                    <View style={styles.titleRow}>
+                        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+
+                        {item.status === 'Closed' && (
+                            <View style={[styles.allotmentBadge, {
+                                backgroundColor: item.isAllotmentOut ? '#E3F2FD' : '#FFF3E0'
+                            }]}>
+                                <Text style={[styles.allotmentText, {
+                                    color: item.isAllotmentOut ? '#2196F3' : '#FF9800'
+                                }]}>
+                                    {item.isAllotmentOut ? 'ALLOTMENT OUT' : 'ALLOTMENT AWAITED'}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+                    <View style={styles.subtitleRow}>
+                        <Text style={[styles.typeBadge, { color: colors.primary, borderColor: colors.primary }]}>{item.type}</Text>
+                        <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
+                        <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+                    </View>
                 </View>
             </View>
 
-            <View style={[styles.infoFooter, { backgroundColor: colors.background + '80', borderTopColor: colors.border }]}>
-                <View style={styles.infoItem}>
-                    <CircleDollarSign size={14} color={colors.text} style={{ opacity: 0.6, marginBottom: 2 }} />
-                    <Text style={[styles.infoValue, { color: colors.text }]}>{item.priceRange}</Text>
-                    <Text style={[styles.infoLabel, { color: colors.text }]}>Price</Text>
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+            <View style={styles.statsContainer}>
+                {/* Row 1: Price | GMP */}
+                <View style={styles.statRow}>
+                    <View style={styles.statItem}>
+                        <Text style={[styles.statLabel, { color: colors.text }]}>PRICE RANGE</Text>
+                        <Text style={[styles.statValue, { color: colors.text }]}>{item.priceRange}</Text>
+                    </View>
+                    <View style={styles.statItemRight}>
+                        <Text style={[styles.statLabel, { color: colors.text }]}>GMP</Text>
+                        <Text style={[styles.statValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
+                    </View>
                 </View>
-                <View style={styles.divider} />
-                <View style={styles.infoItem}>
-                    <TrendingUp size={14} color='#4CAF50' style={{ marginBottom: 2 }} />
-                    <Text style={[styles.infoValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
-                    <Text style={[styles.infoLabel, { color: colors.text }]}>GMP</Text>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.infoItem}>
-                    <Users size={14} color={colors.primary} style={{ marginBottom: 2 }} />
-                    <Text style={[styles.infoValue, { color: colors.text }]}>{item.subscription}</Text>
-                    <Text style={[styles.infoLabel, { color: colors.text }]}>Sub</Text>
+
+                {/* Row 2: Dates | Lot Size */}
+                <View style={[styles.statRow, { marginTop: 12 }]}>
+                    <View style={styles.statItem}>
+                        <Text style={[styles.statLabel, { color: colors.text }]}>OFFER DATES</Text>
+                        <Text style={[styles.statValue, { color: colors.text }]}>{item.dates.offerStart} - {item.dates.offerEnd}</Text>
+                    </View>
+                    <View style={styles.statItemRight}>
+                        <Text style={[styles.statLabel, { color: colors.text }]}>LOT SIZE</Text>
+                        <Text style={[styles.statValue, { color: colors.text }]}>{item.lotSize} Shares</Text>
+                    </View>
                 </View>
             </View>
         </TouchableOpacity>
@@ -67,74 +98,113 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
 
 const styles = StyleSheet.create({
     card: {
-        borderRadius: 16,
-        marginBottom: 12,
+        borderRadius: 12,
+        marginBottom: 16,
         borderWidth: 1,
-        overflow: 'hidden',
+        // Shadow for depth
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.05,
+        shadowRadius: 3.84,
+        elevation: 2,
     },
-    topRow: {
+    header: {
+        flexDirection: 'row',
+        padding: 16,
+        alignItems: 'center',
+    },
+    logoContainer: {
+        marginRight: 12,
+    },
+    logoplaceholder: {
+        width: 44,
+        height: 44,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    headerContent: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    titleRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        padding: 12,
-    },
-    titleContainer: {
-        flexDirection: 'row',
         alignItems: 'center',
-        flex: 1,
-    },
-    logoPlaceholder: {
-        width: 36,
-        height: 36,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginRight: 10,
+        marginBottom: 4,
     },
     title: {
         fontSize: 16,
+        fontWeight: '700',
+        flex: 1,
+        marginRight: 8,
+    },
+    allotmentBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+    },
+    allotmentText: {
+        fontSize: 9, // Slightly smaller font for longer text
         fontWeight: 'bold',
-        marginBottom: 2,
     },
-    subTitle: {
-        fontSize: 12,
+    subtitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
-    badgeContainer: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-        marginLeft: 8,
-    },
-    statusBadge: {
-        fontWeight: 'bold',
+    typeBadge: {
         fontSize: 10,
+        fontWeight: '600',
+        borderWidth: 1,
+        borderRadius: 4,
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        marginRight: 8,
         textTransform: 'uppercase',
     },
-    infoFooter: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderTopWidth: 1,
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        marginRight: 4,
     },
-    infoItem: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    infoValue: {
-        fontSize: 13,
-        fontWeight: 'bold',
-        marginBottom: 1,
-    },
-    infoLabel: {
-        fontSize: 10,
-        opacity: 0.6,
+    statusText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
     divider: {
-        width: 1,
-        backgroundColor: '#ccc',
-        opacity: 0.2,
-        height: '80%',
-        alignSelf: 'center',
+        height: 1,
+        opacity: 0.5,
+    },
+    statsContainer: {
+        padding: 16,
+        paddingTop: 12,
+    },
+    statRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    statItem: {
+        flex: 1,
+        alignItems: 'flex-start',
+    },
+    statItemRight: {
+        flex: 1,
+        alignItems: 'flex-end',
+    },
+    statLabel: {
+        fontSize: 10,
+        opacity: 0.5,
+        fontWeight: '600',
+        marginBottom: 2,
+        letterSpacing: 0.5,
+    },
+    statValue: {
+        fontSize: 14,
+        fontWeight: '600',
     }
 });

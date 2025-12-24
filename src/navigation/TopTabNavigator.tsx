@@ -6,6 +6,7 @@ import { useTheme } from '../theme/ThemeContext';
 export type TopTabParamList = {
     Mainboard: { type: 'Mainboard' };
     SME: { type: 'SME' };
+    Listed: { type: 'Listed' };
     Alloted: { type: 'Alloted' };
 };
 
@@ -37,10 +38,16 @@ export const TopTabNavigator = () => {
                 options={{ title: 'SME' }}
             />
             <Tab.Screen
+                name="Listed"
+                component={IPOListScreen}
+                initialParams={{ type: 'Listed' }}
+                options={{ title: 'Listed' }}
+            />
+            <Tab.Screen
                 name="Alloted"
                 component={IPOListScreen}
                 initialParams={{ type: 'Alloted' }}
-                options={{ title: 'Alloted IPOs' }}
+                options={{ title: 'Alloted' }}
             />
         </Tab.Navigator>
     );
