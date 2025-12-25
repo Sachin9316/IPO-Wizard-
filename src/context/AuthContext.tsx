@@ -10,6 +10,7 @@ interface AuthContextType {
     startLogin: (email: string) => Promise<string>; // Returns loginId
     pollLoginStatus: (loginId: string) => Promise<boolean>; // Returns true if success
     logout: () => Promise<void>;
+    refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -33,8 +34,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 try {
                     const profile = await fetchUserProfile(storedToken);
                     setUser(profile);
-                } catch (e) {
-                    await logout();
+                } catch (e: any) {
+                    // Only logout if token is invalid (401)
+                    if (e.status === 401) {
+                        await logout();
+                    } else {
+                        console.warn("Profile fetch failed, but keeping session:", e);
+                        // Optional: Retry logic or partial state
+                    }
                 }
             }
         } catch (e) {
@@ -92,8 +99,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
     };
 
+    const refreshProfile = async () => {
+        if (token) {
+            try {
+                const profile = await fetchUserProfile(token);
+                setUser(profile);
+            } catch (e: any) {
+                console.warn("Profile refresh failed:", e);
+                if (e.status === 401) {
+                    await logout();
+                }
+            }
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, isLoading, startLogin, pollLoginStatus, logout }}>
+        <AuthContext.Provider value={{ user, token, isAuthenticated: !!token, isLoading, startLogin, pollLoginStatus, logout, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );

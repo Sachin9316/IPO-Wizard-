@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { AddPANModal } from '../../components/AddPANModal';
@@ -7,7 +7,7 @@ import { Plus, CreditCard, Trash2, Edit, Cloud, CloudOff, LogIn } from 'lucide-r
 import { useAuth } from '../../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addUserPAN, deleteUserPAN } from '../../services/api';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 interface PANData {
     id: string; // For local: timestamp. For cloud: _id or panNumber? API uses panNumber for delete.
@@ -17,19 +17,36 @@ interface PANData {
 
 export const SavedPANsScreen = () => {
     const { colors } = useTheme();
-    const { user, isAuthenticated, token } = useAuth();
+    const { user, isAuthenticated, token, refreshProfile } = useAuth();
     const navigation = useNavigation<any>();
 
     const [modalVisible, setModalVisible] = useState(false);
     const [editingPAN, setEditingPAN] = useState<PANData | null>(null);
     const [localPans, setLocalPans] = useState<PANData[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false); // Add refreshing state
 
     useEffect(() => {
-        if (!isAuthenticated) {
-            loadLocalPans();
-        }
+        loadLocalPans();
+        // Reload local pans whenever auth changes to ensure we have fresh state
     }, [isAuthenticated]);
+
+    // Add useFocusEffect to refresh profile when navigating to this tab
+    useFocusEffect(
+        useCallback(() => {
+            if (isAuthenticated && refreshProfile) {
+                refreshProfile();
+            }
+        }, [isAuthenticated])
+    );
+
+    const onRefresh = async () => {
+        if (refreshProfile) {
+            setRefreshing(true);
+            await refreshProfile();
+            setRefreshing(false);
+        }
+    };
 
     const loadLocalPans = async () => {
         try {
@@ -42,6 +59,26 @@ export const SavedPANsScreen = () => {
         }
     };
 
+    const handleSyncPAN = async (pan: PANData) => {
+        if (!isAuthenticated || !token) return;
+        setIsLoading(true);
+        try {
+            await addUserPAN(token, { panNumber: pan.panNumber, name: pan.name });
+
+            // Success: Remove from local storage
+            const updated = localPans.filter(p => p.panNumber !== pan.panNumber);
+            setLocalPans(updated);
+            await AsyncStorage.setItem('unsaved_pans', JSON.stringify(updated));
+
+            Alert.alert("Synced", `PAN ${pan.panNumber} synced to cloud.`);
+            if (refreshProfile) refreshProfile(); // Refresh profile after sync
+        } catch (e: any) {
+            Alert.alert("Sync Error", e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleAddPAN = async (data: { panNumber: string; name?: string }) => {
         const name = data.name || '';
         const panNumber = data.panNumber.toUpperCase();
@@ -51,15 +88,9 @@ export const SavedPANsScreen = () => {
             setIsLoading(true);
             try {
                 await addUserPAN(token, { panNumber, name });
-                // We rely on AuthContext user update or manual fetch?
-                // For simplicity, we can't easily re-fetch user here without exposing a method.
-                // But AuthContext login fetches user. Maybe we need a refreshProfile method?
-                // Or just optimistically update UI?
-                // Ideally API returns updated list. addUserPAN response is user.panDocuments usually?
-                // Let's assume user state updates via context or we force a reload.
-                // For now, simple alert success. Context should arguably reload profile.
                 Alert.alert("Success", "PAN added to your account");
                 setModalVisible(false);
+                if (refreshProfile) refreshProfile(); // Refresh after add
             } catch (e: any) {
                 Alert.alert("Error", e.message);
             } finally {
@@ -73,6 +104,11 @@ export const SavedPANsScreen = () => {
                 AsyncStorage.setItem('unsaved_pans', JSON.stringify(updated));
                 setEditingPAN(null);
             } else {
+                // Check dupes
+                if (localPans.some(p => p.panNumber === panNumber)) {
+                    Alert.alert("Duplicate", "PAN already exists locally.");
+                    return;
+                }
                 const newPan = { id: Date.now().toString(), panNumber, name };
                 const updated = [...localPans, newPan];
                 setLocalPans(updated);
@@ -84,7 +120,6 @@ export const SavedPANsScreen = () => {
 
     const handleEditPAN = (pan: PANData) => {
         if (isAuthenticated) {
-            // Editing cloud PANs might require separate API or just delete/add
             Alert.alert("Info", "To edit a verified PAN, please remove and add it again.");
         } else {
             setEditingPAN(pan);
@@ -92,9 +127,9 @@ export const SavedPANsScreen = () => {
         }
     };
 
-    const handleDeletePAN = async (id: string, panNumber: string) => {
-        if (isAuthenticated && token) {
-            Alert.alert("Delete PAN", "Are you sure?", [
+    const handleDeletePAN = async (id: string, panNumber: string, isCloud: boolean) => {
+        if (isCloud && isAuthenticated && token) {
+            Alert.alert("Delete PAN", "Remove from cloud account?", [
                 { text: "Cancel", style: "cancel" },
                 {
                     text: "Delete",
@@ -103,8 +138,8 @@ export const SavedPANsScreen = () => {
                         setIsLoading(true);
                         try {
                             await deleteUserPAN(token, panNumber);
-                            // Again, context sync issue.
                             Alert.alert("Success", "PAN deleted");
+                            if (refreshProfile) refreshProfile(); // Refresh after delete
                         } catch (e: any) {
                             Alert.alert("Error", e.message);
                         } finally {
@@ -114,43 +149,57 @@ export const SavedPANsScreen = () => {
                 }
             ]);
         } else {
+            // Local delete
             const updated = localPans.filter(p => p.id !== id);
             setLocalPans(updated);
             AsyncStorage.setItem('unsaved_pans', JSON.stringify(updated));
         }
     };
 
-    // Determine list to show
-    const displayPans = isAuthenticated
-        ? (user?.panDocuments?.map((p: any) => ({ ...p, id: p._id || p.panNumber })) || [])
-        : localPans;
+    // Filter Logic
+    const cloudPans = isAuthenticated ? (user?.panDocuments?.map((p: any) => ({ ...p, id: p._id || p.panNumber })) || []) : [];
 
-    const renderPANCard = ({ item }: { item: PANData }) => (
+    // Unsaved = Local pans that are NOT in cloudPans
+    const unsavedPans = localPans.filter(lp => !cloudPans.some((cp: any) => cp.panNumber === lp.panNumber));
+
+    const renderPANCard = ({ item, isCloud }: { item: PANData, isCloud: boolean }) => (
         <View style={[styles.panCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.panCardContent}>
-                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
-                    <CreditCard size={24} color={colors.primary} />
+                <View style={[styles.iconContainer, { backgroundColor: isCloud ? colors.primary + '20' : '#FF980020' }]}>
+                    <CreditCard size={24} color={isCloud ? colors.primary : '#FF9800'} />
                 </View>
                 <View style={styles.panInfo}>
                     <Text style={[styles.panNumber, { color: colors.text }]}>{item.panNumber}</Text>
                     <Text style={[styles.panName, { color: colors.text, opacity: 0.7 }]}>{item.name}</Text>
-                    {isAuthenticated && (
+
+                    {isCloud && (
                         <View style={styles.verifiedTag}>
                             <Cloud size={12} color={colors.primary} />
                             <Text style={{ fontSize: 10, color: colors.primary, marginLeft: 4 }}>Saved</Text>
                         </View>
                     )}
+
+                    {!isCloud && isAuthenticated && (
+                        <TouchableOpacity style={styles.syncLink} onPress={() => handleSyncPAN(item)}>
+                            <Text style={{ fontSize: 12, color: '#FF9800', fontWeight: 'bold' }}>Not Saved • Tap to Sync</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
             <View style={styles.actionButtons}>
-                {!isAuthenticated && (
+                {!isCloud && isAuthenticated && (
+                    <TouchableOpacity style={[styles.editBtn, { marginRight: 4 }]} onPress={() => handleSyncPAN(item)}>
+                        <Cloud size={20} color={colors.primary} />
+                    </TouchableOpacity>
+                )}
+                {!isCloud && !isAuthenticated && (
                     <TouchableOpacity style={styles.editBtn} onPress={() => handleEditPAN(item)}>
                         <Edit size={20} color={colors.primary} />
                     </TouchableOpacity>
                 )}
                 <TouchableOpacity
                     style={styles.deleteBtn}
-                    onPress={() => handleDeletePAN(item.id, item.panNumber)}
+                    onPress={() => handleDeletePAN(item.id, item.panNumber, isCloud)}
                 >
                     <Trash2 size={20} color="#F44336" />
                 </TouchableOpacity>
@@ -164,13 +213,13 @@ export const SavedPANsScreen = () => {
                 {isAuthenticated ? (
                     <View style={styles.statusRow}>
                         <Cloud size={16} color={colors.primary} />
-                        <Text style={[styles.statusText, { color: colors.primary }]}>Cloud Synced</Text>
+                        <Text style={[styles.statusText, { color: colors.primary }]}>Logged In</Text>
                     </View>
                 ) : (
-                    <TouchableOpacity style={styles.loginBanner} onPress={() => navigation.navigate('Login')}>
+                    <TouchableOpacity style={styles.loginBanner} onPress={() => navigation.navigate('MainTabs', { screen: 'Profile' })}>
                         <View style={styles.statusRow}>
                             <CloudOff size={16} color={colors.text} />
-                            <Text style={[styles.statusText, { color: colors.text }]}>Local Mode (Unsaved)</Text>
+                            <Text style={[styles.statusText, { color: colors.text }]}>Local Mode</Text>
                         </View>
                         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                             <Text style={{ color: colors.primary, marginRight: 5, fontWeight: 'bold' }}>Login to Sync</Text>
@@ -182,21 +231,51 @@ export const SavedPANsScreen = () => {
 
             {isLoading && <ActivityIndicator size="small" color={colors.primary} style={{ margin: 10 }} />}
 
-            {displayPans.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                    <CreditCard size={64} color={colors.text} style={{ opacity: 0.3 }} />
-                    <Text style={[styles.emptyText, { color: colors.text, opacity: 0.5 }]}>
-                        {isAuthenticated ? "No saved PANs" : "No unsaved PANs"}
-                    </Text>
-                </View>
-            ) : (
-                <FlatList
-                    data={displayPans}
-                    renderItem={renderPANCard}
-                    keyExtractor={(item) => item.panNumber} // Use panNumber as key for uniqueness
-                    contentContainerStyle={styles.listContent}
-                />
-            )}
+            <FlatList
+                data={[]} // Dummy data since we render sections manually or use SectionList? 
+                // Creating a combined list with headers is complex with two arrays.
+                // Let's us ScrollView with two map loops for simplicity given low item count.
+                ListHeaderComponent={
+                    <View style={{ padding: 16 }}>
+                        {isAuthenticated && cloudPans.length > 0 && (
+                            <View style={{ marginBottom: 20 }}>
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Synced PANs ({cloudPans.length})</Text>
+                                {cloudPans.map((pan: any) => (
+                                    <View key={pan.id}>{renderPANCard({ item: pan, isCloud: true })}</View>
+                                ))}
+                            </View>
+                        )}
+
+                        {(unsavedPans.length > 0) && (
+                            <View style={{ marginBottom: 20 }}>
+                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Unsaved PANs ({unsavedPans.length})</Text>
+                                <Text style={{ fontSize: 12, color: colors.text, opacity: 0.5, marginBottom: 10 }}>Only stored on this device</Text>
+                                {unsavedPans.map((pan: any) => (
+                                    <View key={pan.id}>{renderPANCard({ item: pan, isCloud: false })}</View>
+                                ))}
+                            </View>
+                        )}
+
+                        {isAuthenticated && cloudPans.length === 0 && unsavedPans.length === 0 && (
+                            <View style={styles.emptyContainer}>
+                                <CreditCard size={64} color={colors.text} style={{ opacity: 0.3 }} />
+                                <Text style={[styles.emptyText, { color: colors.text, opacity: 0.5 }]}>No saved PANs</Text>
+                                <Text style={{ fontSize: 12, color: colors.text, opacity: 0.5, marginTop: 8 }}>Pull down to refresh</Text>
+                            </View>
+                        )}
+                        {!isAuthenticated && unsavedPans.length === 0 && (
+                            <View style={styles.emptyContainer}>
+                                <CreditCard size={64} color={colors.text} style={{ opacity: 0.3 }} />
+                                <Text style={[styles.emptyText, { color: colors.text, opacity: 0.5 }]}>No local PANs</Text>
+                            </View>
+                        )}
+                    </View>
+                }
+                renderItem={null}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+                }
+            />
 
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: colors.primary }]}
@@ -225,7 +304,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ccc', borderStyle: 'dashed'
     },
-    listContent: { padding: 16 },
+    sectionTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 10, textTransform: 'uppercase', opacity: 0.7 },
     panCard: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 12,
@@ -240,10 +319,11 @@ const styles = StyleSheet.create({
     panNumber: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
     panName: { fontSize: 14 },
     verifiedTag: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+    syncLink: { marginTop: 4 },
     actionButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     editBtn: { padding: 8 },
     deleteBtn: { padding: 8 },
-    emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
+    emptyContainer: { alignItems: 'center', justifyContent: 'center', padding: 32, marginTop: 40 },
     emptyText: { fontSize: 18, fontWeight: '600', marginTop: 16 },
     fab: {
         position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28,
