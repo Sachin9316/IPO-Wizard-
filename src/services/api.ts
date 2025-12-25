@@ -1,5 +1,6 @@
+import { API_CONFIG } from '../config/api.config';
 
-const BASE_URL = 'http://10.27.72.227:4000/api/v1';
+const BASE_URL = API_CONFIG.BASE_URL;
 
 export const fetchMainboardIPOs = async (page = 1, limit = 10, status?: string) => {
     try {
