@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "IPO Wizard",
-    "slug": "ipo-wizard",
+    "slug": "ipo_wizard",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
