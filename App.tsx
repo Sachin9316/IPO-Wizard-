@@ -4,6 +4,7 @@ import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { AuthProvider } from './src/context/AuthContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 const AppContent = () => {
@@ -48,7 +49,9 @@ export default function App() {
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaProvider>
                 <ThemeProvider>
-                    <AppContent />
+                    <AuthProvider>
+                        <AppContent />
+                    </AuthProvider>
                 </ThemeProvider>
             </SafeAreaProvider>
         </GestureHandlerRootView>
