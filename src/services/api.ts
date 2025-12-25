@@ -116,6 +116,30 @@ export const deleteUserPAN = async (token: string, panNumber: string) => {
     return response.json();
 };
 
+export const fetchWatchlist = async (token: string) => {
+    const response = await fetch(`${AUTH_URL}/users/profile/watchlist`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    if (!response.ok) throw new Error('Failed to fetch watchlist');
+    const data = await response.json();
+    return data || [];
+};
+
+export const toggleWatchlist = async (token: string, ipoId: string) => {
+    const response = await fetch(`${AUTH_URL}/users/profile/watchlist`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ipoId })
+    });
+    if (!response.ok) throw new Error('Failed to update watchlist');
+    return response.json();
+};
+
 export const startMagicLogin = async (email: string) => {
     try {
         const response = await fetch(`${AUTH_URL}/auth/magic-start`, {
@@ -151,4 +175,21 @@ export const checkMagicLoginStatus = async (loginId: string) => {
         throw new Error('Status check failed');
     }
     return response.json();
+};
+
+export const api = {
+    get: async (endpoint: string, config?: { params?: any }) => {
+        let url = `${BASE_URL}${endpoint}`;
+        if (config?.params) {
+            const queryString = Object.keys(config.params)
+                .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(config.params[key])}`)
+                .join('&');
+            url += url.includes('?') ? `&${queryString}` : `?${queryString}`;
+        }
+
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('API Request Failed');
+        const data = await response.json();
+        return { data };
+    }
 };

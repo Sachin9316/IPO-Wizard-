@@ -1,0 +1,350 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Easing, Share, Image } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTheme } from '../../theme/ThemeContext';
+import { X, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../context/AuthContext';
+
+interface PANData {
+    panNumber: string;
+    name: string;
+}
+
+interface AllotmentResult {
+    panNumber: string;
+    name: string;
+    status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED';
+    units?: number;
+}
+
+export const AllotmentResultScreen = ({ route, navigation }: any) => {
+    const { colors } = useTheme();
+    const { ipo } = route.params;
+    const ipoName = ipo?.name;
+    const ipoLogo = ipo?.logoUrl;
+    const { user, isAuthenticated } = useAuth();
+
+    const [loading, setLoading] = useState(true);
+    const [progress, setProgress] = useState(0); // 0 to 1
+    const [results, setResults] = useState<AllotmentResult[]>([]);
+    const [allPanCount, setAllPanCount] = useState(0);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    // Animation Values
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        checkAllotment();
+    }, []);
+
+    const checkAllotment = async () => {
+        setLoading(true);
+        setProgress(0);
+
+        try {
+            // 1. Fetch Local PANs
+            let localPans: PANData[] = [];
+            const stored = await AsyncStorage.getItem('unsaved_pans');
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                localPans = parsed.map((p: any) => ({ panNumber: p.panNumber, name: p.name }));
+            }
+
+            // 2. Fetch Cloud PANs
+            let cloudPans: PANData[] = [];
+            if (isAuthenticated && user?.panDocuments) {
+                cloudPans = user.panDocuments.map((p: any) => ({ panNumber: p.panNumber, name: p.name }));
+            }
+
+            // 3. Merge Unique PANs
+            const allPansMap = new Map<string, PANData>();
+            [...localPans, ...cloudPans].forEach(p => {
+                allPansMap.set(p.panNumber, p);
+            });
+            const allPans = Array.from(allPansMap.values());
+            setAllPanCount(allPans.length);
+
+            if (allPans.length === 0) {
+                setLoading(false);
+                return;
+            }
+
+            // 4. Batch Process Logic (Simulating large dataset handling)
+            const BATCH_SIZE = 50;
+            const resultsBuffer: AllotmentResult[] = [];
+
+            for (let i = 0; i < allPans.length; i += BATCH_SIZE) {
+                const batch = allPans.slice(i, i + BATCH_SIZE);
+
+                // Simulate Network Delay per batch
+                await new Promise(resolve => setTimeout(resolve, 300));
+
+                const batchResults = batch.map(pan => {
+                    const status = getDeterministicStatus(pan.panNumber);
+                    return {
+                        panNumber: pan.panNumber,
+                        name: pan.name,
+                        status: status,
+                        units: status === 'ALLOTTED' ? 1 : 0
+                    };
+                });
+
+                resultsBuffer.push(...batchResults);
+                setProgress(Math.min((i + BATCH_SIZE) / allPans.length, 1));
+            }
+
+            setResults(resultsBuffer);
+            setLoading(false);
+
+            // Trigger Fade In
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+                easing: Easing.out(Easing.ease)
+            }).start();
+
+        } catch (error) {
+            console.error(error);
+            setLoading(false);
+        }
+    };
+
+    const getDeterministicStatus = (pan: string): 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' => {
+        // Simple hash: sum of char codes
+        let sum = 0;
+        for (let i = 0; i < pan.length; i++) {
+            sum += pan.charCodeAt(i);
+        }
+        const outcome = sum % 3;
+        if (outcome === 0) return 'ALLOTTED';
+        if (outcome === 1) return 'NOT_ALLOTTED';
+        return 'NOT_APPLIED';
+    };
+
+    const filteredResults = results.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.panNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => {
+        let statusColor, bgColor, statusText;
+
+        switch (item.status) {
+            case 'ALLOTTED':
+                statusColor = '#2E7D32';
+                bgColor = '#E8F5E9';
+                statusText = 'ALLOTTED';
+                break;
+            case 'NOT_ALLOTTED':
+                statusColor = '#C62828';
+                bgColor = '#FFEBEE';
+                statusText = 'NOT ALLOTTED';
+                break;
+            case 'NOT_APPLIED':
+            default:
+                statusColor = '#616161';
+                bgColor = '#F5F5F5';
+                statusText = 'NOT APPLIED';
+                break;
+        }
+
+        // Adjust colors for dark mode
+        if (colors.background !== '#FFFFFF') {
+            if (item.status === 'ALLOTTED') {
+                bgColor = '#1B5E20';
+                statusColor = '#E8F5E9';
+            } else if (item.status === 'NOT_ALLOTTED') {
+                bgColor = '#B71C1C';
+                statusColor = '#FFEBEE';
+            } else {
+                bgColor = '#2C2C2C';
+                statusColor = '#9E9E9E';
+            }
+        }
+
+        return (
+            <Animated.View style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [10 * (index + 1), 0] }) }]
+            }}>
+                <View style={[styles.card, { backgroundColor: bgColor, borderColor: statusColor, borderLeftWidth: 4 }]}>
+                    <View style={styles.cardContent}>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                            <Text style={[styles.cardPan, { color: colors.text }]}>{item.panNumber}</Text>
+                        </View>
+
+                        <View style={{ width: 120, alignItems: 'flex-end', justifyContent: 'center' }}>
+                            <Text style={[styles.cardStatus, { color: statusColor, textAlign: 'right' }]} numberOfLines={1}>{statusText}</Text>
+                            {item.status === 'ALLOTTED' && (
+                                <Text style={{ fontSize: 10, color: statusColor, marginTop: 2, textAlign: 'right' }}>1 Lot / {item.units} Shares</Text>
+                            )}
+                        </View>
+                    </View>
+                </View>
+            </Animated.View>
+        );
+    };
+
+    const allottedCount = results.filter(r => r.status === 'ALLOTTED').length;
+
+    return (
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
+                    <X color={colors.text} size={24} />
+                </TouchableOpacity>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>Allotment Status</Text>
+                <View style={{ width: 24 }} />
+            </View>
+
+            <View style={styles.content}>
+                {loading ? (
+                    <View style={styles.centerContainer}>
+                        <View style={{ width: 200, height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden', marginBottom: 16 }}>
+                            <View style={{ width: `${progress * 100}%`, height: '100%', backgroundColor: colors.primary }} />
+                        </View>
+                        <Text style={[styles.loadingText, { color: colors.text }]}>Checking {Math.floor(progress * allPanCount)} / {allPanCount}...</Text>
+                    </View>
+                ) : results.length > 0 ? (
+                    <View style={{ flex: 1 }}>
+
+                        {/* Simple Summary */}
+                        {allottedCount > 0 && (
+                            <View style={[styles.simpleBanner, { backgroundColor: '#E8F5E9' }]}>
+                                <Text style={{ color: '#2E7D32', fontWeight: 'bold' }}>🎉 {allottedCount} Applications Allotted!</Text>
+                            </View>
+                        )}
+
+                        <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                                <View style={[styles.ipoIconContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                    {ipoLogo ? (
+                                        <Image source={{ uri: ipoLogo }} style={styles.ipoIcon} resizeMode="contain" />
+                                    ) : (
+                                        <Trophy size={20} color={colors.primary} />
+                                    )}
+                                </View>
+                                <Text style={[styles.companyTitle, { color: colors.text, marginBottom: 0, marginLeft: 10 }]}>{ipoName}</Text>
+                            </View>
+
+                            <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                <Search size={18} color={colors.text} style={{ opacity: 0.5, marginRight: 8 }} />
+                                <TextInput
+                                    style={{ flex: 1, color: colors.text, fontSize: 13, paddingVertical: 4 }}
+                                    placeholder="Search..."
+                                    placeholderTextColor={colors.text + '80'}
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.statsContainer}>
+                            <View style={[styles.statBox, { backgroundColor: '#E3F2FD', borderColor: '#2196F3' }]}>
+                                <Text style={[styles.statCount, { color: '#1565C0' }]}>{filteredResults.filter(r => r.status !== 'NOT_APPLIED').length}</Text>
+                                <Text style={[styles.statLabel, { color: '#1565C0' }]}>Applied</Text>
+                            </View>
+                            <View style={[styles.statBox, { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' }]}>
+                                <Text style={[styles.statCount, { color: '#2E7D32' }]}>{filteredResults.filter(r => r.status === 'ALLOTTED').length}</Text>
+                                <Text style={[styles.statLabel, { color: '#2E7D32' }]}>Allotted</Text>
+                            </View>
+                            <View style={[styles.statBox, { backgroundColor: '#FFEBEE', borderColor: '#F44336' }]}>
+                                <Text style={[styles.statCount, { color: '#C62828' }]}>{filteredResults.filter(r => r.status === 'NOT_ALLOTTED').length}</Text>
+                                <Text style={[styles.statLabel, { color: '#C62828' }]}>Not Allotted</Text>
+                            </View>
+                            <View style={[styles.statBox, { backgroundColor: '#F5F5F5', borderColor: '#9E9E9E' }]}>
+                                <Text style={[styles.statCount, { color: '#616161' }]}>{filteredResults.filter(r => r.status === 'NOT_APPLIED').length}</Text>
+                                <Text style={[styles.statLabel, { color: '#616161' }]}>Not Applied</Text>
+                            </View>
+                        </View>
+
+                        <FlatList
+                            data={filteredResults}
+                            keyExtractor={item => item.panNumber}
+                            renderItem={renderResultCard}
+                            contentContainerStyle={{ padding: 16, paddingTop: 0 }}
+                            ListEmptyComponent={
+                                <Text style={{ textAlign: 'center', marginTop: 32, color: colors.text, opacity: 0.6 }}>No results.</Text>
+                            }
+                        />
+                    </View>
+                ) : (
+                    <View style={styles.centerContainer}>
+                        <Text style={{ color: colors.text }}>No PANs found.</Text>
+                        <TouchableOpacity style={{ marginTop: 10 }} onPress={() => navigation.navigate("Root", { screen: "PANs" })}>
+                            <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Add PANs</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        </SafeAreaView>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: { flex: 1 },
+    header: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        padding: 12, borderBottomWidth: 1,
+    },
+    closeBtn: { padding: 4 },
+    headerTitle: { fontSize: 16, fontWeight: 'bold' },
+    content: { flex: 1 },
+    centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingText: { marginTop: 12, fontSize: 14, fontWeight: '600' },
+
+    simpleBanner: {
+        padding: 8, alignItems: 'center', justifyContent: 'center'
+    },
+    companyTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
+    searchBar: {
+        flexDirection: 'row', alignItems: 'center',
+        paddingHorizontal: 10, paddingVertical: 8,
+        borderRadius: 8, borderWidth: 1,
+    },
+
+    // Simple Card Styles
+    card: {
+        backgroundColor: '#FFF',
+        borderRadius: 8,
+        marginBottom: 8,
+        padding: 12,
+        // Remove elevation for simpler look, or keep minimal
+        borderWidth: 1,
+        borderColor: '#EEE',
+    },
+    cardContent: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
+    },
+    cardName: { fontSize: 14, fontWeight: 'bold' },
+    cardPan: { fontSize: 12, opacity: 0.6 },
+    cardStatus: { fontSize: 12, fontWeight: 'bold' },
+    shareBtn: {
+        position: 'absolute', top: 8, right: 8, opacity: 0.5
+    },
+
+    statsContainer: {
+        flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, gap: 8,
+    },
+    statBox: {
+        flex: 1, borderRadius: 8, padding: 8, alignItems: 'center', borderWidth: 1,
+    },
+    statCount: { fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
+    statLabel: { fontSize: 9, fontWeight: '600', textTransform: 'uppercase' },
+    ipoIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 8,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden'
+    },
+    ipoIcon: {
+        width: '100%',
+        height: '100%'
+    }
+});

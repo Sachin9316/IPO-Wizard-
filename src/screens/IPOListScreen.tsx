@@ -1,20 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { IPOData } from '../data/dummyData';
 import { IPOCard } from '../components/IPOCard';
-import { useNavigation } from '@react-navigation/native';
-import { fetchMainboardIPOs, fetchSMEIPOs, fetchListedIPOs } from '../services/api';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { fetchMainboardIPOs, fetchSMEIPOs, fetchListedIPOs, fetchWatchlist } from '../services/api';
 import { mapBackendToFrontend } from '../utils/mapper';
+import { useAuth } from '../context/AuthContext';
 
 interface IPOListScreenProps {
-    type: 'SME' | 'Mainboard' | 'Alloted' | 'Listed';
+    type: 'SME' | 'Mainboard' | 'Alloted' | 'Listed' | 'Watchlist';
 }
 
 export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps } }) => {
     const { type } = route.params || { type: 'Mainboard' };
     const { colors } = useTheme();
     const navigation = useNavigation<any>();
+    const { token, isAuthenticated } = useAuth();
     const [ipos, setIpos] = React.useState<IPOData[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [refreshing, setRefreshing] = React.useState(false);
@@ -53,6 +55,13 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                     const [mb, sme] = await Promise.all([fetchMainboardIPOs(1, 100), fetchSMEIPOs(1, 100)]);
                     fetchedData = [...mb, ...sme].filter(ipo => ipo.status === 'Closed' || ipo.isAllotmentOut);
                 }
+            } else if (type === 'Watchlist') {
+                if (isAuthenticated && token) {
+                    // Watchlist is not paginated yet in backend, fetches all
+                    if (pageNum === 1 && stage === 0) {
+                        currentFetchPromise = fetchWatchlist(token);
+                    }
+                }
             }
 
             if (currentFetchPromise) {
@@ -68,7 +77,7 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
             }
 
             // Stage Transition Logic
-            if (fetchedData.length < limit && type !== 'Alloted') {
+            if (fetchedData.length < limit && type !== 'Alloted' && type !== 'Watchlist') {
                 let nextStage = -1;
                 if ((type === 'Mainboard' || type === 'SME') && stage === 0) nextStage = 1;
                 else if (type === 'Listed' && stage < 2) nextStage = stage + 1;
@@ -77,13 +86,12 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                     setFetchStage(nextStage);
                     setPage(0); // Reset to 0 so next loadMore increments to 1
                     setHasMore(true);
-                    // Optional: If the list is very short, trigger next load immediately?
-                    // Rely on onEndReached for now.
                 } else {
                     setHasMore(false);
                 }
             } else {
-                setHasMore(true);
+                if (type === 'Watchlist' || type === 'Alloted') setHasMore(false); // No pagination for now
+                else setHasMore(true);
             }
 
         } catch (error) {
@@ -93,11 +101,21 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
             setRefreshing(false);
             setLoadingMore(false);
         }
-    }, [type]);
+    }, [type, token, isAuthenticated]);
 
+    // Initial load on mount
     React.useEffect(() => {
         loadData(1, 0, true);
-    }, [type]); // Reset when type changes
+    }, [loadData]);
+
+    // Refresh when tab comes into focus (only for Watchlist to sync changes)
+    useFocusEffect(
+        React.useCallback(() => {
+            if (type === 'Watchlist') {
+                loadData(1, 0, true);
+            }
+        }, [loadData, type])
+    );
 
     const handlePress = (item: IPOData) => {
         navigation.navigate('IPODetails', { item });
@@ -112,7 +130,7 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
     };
 
     const loadMore = () => {
-        if (!loadingMore && hasMore && !loading && type !== 'Alloted') {
+        if (!loadingMore && hasMore && !loading && type !== 'Alloted' && type !== 'Watchlist') {
             const nextPage = page + 1;
             setPage(nextPage);
             loadData(nextPage, fetchStage);
@@ -122,8 +140,8 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
     const renderFooter = () => {
         if (!loadingMore) return null;
         return (
-            <View style={{ paddingVertical: 20 }}>
-                <Text style={{ textAlign: 'center', color: colors.text }}>Loading more...</Text>
+            <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color={colors.primary} />
             </View>
         );
     };
@@ -131,7 +149,7 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
     if (loading && !refreshing && page === 1 && fetchStage === 0) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <Text style={{ color: colors.text }}>Loading...</Text>
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }
@@ -143,7 +161,15 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                 renderItem={({ item }) => <IPOCard item={item} onPress={handlePress} />}
                 keyExtractor={(item, index) => `${item.id}-${index}`}
                 contentContainerStyle={styles.listContent}
-                ListEmptyComponent={<Text style={{ color: colors.text, textAlign: 'center', marginTop: 20 }}>No IPOs found.</Text>}
+                ListEmptyComponent={
+                    <View style={{ padding: 20, alignItems: 'center' }}>
+                        <Text style={{ color: colors.text, textAlign: 'center', marginTop: 20 }}>
+                            {type === 'Watchlist' && !isAuthenticated
+                                ? "Please login to view your watchlist."
+                                : "No IPOs found."}
+                        </Text>
+                    </View>
+                }
                 refreshing={refreshing}
                 onRefresh={onRefresh}
                 onEndReached={loadMore}

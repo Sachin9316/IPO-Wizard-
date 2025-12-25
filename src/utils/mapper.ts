@@ -43,6 +43,7 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
 
     return {
         id: backendData._id || backendData.id,
+        symbol: backendData.bse_code_nse_code,
         name: backendData.companyName,
         type: isSME ? 'SME' : 'Mainboard',
         priceRange: (backendData.min_price && backendData.max_price)
@@ -63,6 +64,28 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
             refund: moment(backendData.refund_date).format('DD MMM'),
             listing: moment(backendData.listing_date).format('DD MMM')
         },
-        isAllotmentOut: backendData.isAllotmentOut || false
+        isAllotmentOut: backendData.isAllotmentOut || false,
+        // For debugging: Force links for Zomato if backend has them missing
+        rhpUrl: backendData.rhp_pdf || (backendData.companyName === 'Zomato Limited' ? 'https://www.sebi.gov.in/sebi_data/attachdocs/jul-2021/1625546682662.pdf' : undefined),
+        drhpUrl: backendData.drhp_pdf || (backendData.companyName === 'Zomato Limited' ? 'https://www.sebi.gov.in/sebi_data/attachdocs/apr-2021/1619586156942.pdf' : undefined),
+        registrarLink: backendData.registrarLink || undefined,
+        swot: backendData.swot ? {
+            strengths: backendData.swot.strengths || [],
+            weaknesses: backendData.swot.weaknesses || [],
+            opportunities: backendData.swot.opportunities || [],
+            threats: backendData.swot.threats || []
+        } : undefined,
+        subscriptionDetails: backendData.subscription ? {
+            qib: backendData.subscription.qib || 0,
+            nii: backendData.subscription.nii || 0,
+            retail: backendData.subscription.retail || 0,
+            employee: backendData.subscription.employee || 0,
+            total: backendData.subscription.total || 0
+        } : undefined,
+        gmpDetails: backendData.gmp ? backendData.gmp.map((g: any) => ({
+            price: g.price || 0,
+            date: moment(g.date).format('DD MMM'),
+            kostak: g.kostak || '-'
+        })) : []
     };
 };

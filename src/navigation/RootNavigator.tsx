@@ -1,21 +1,33 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTheme } from '../theme/ThemeContext';
 import { BottomTabNavigator } from './BottomTabNavigator';
 import { IPODetailsScreen } from '../screens/details/IPODetailsScreen';
-// Auth screens removed in favor of Magic Link in Profile
-// import { LoginScreen } from '../screens/auth/LoginScreen';
-// import { RegisterScreen } from '../screens/auth/RegisterScreen';
+import { SubscriptionScreen } from '../screens/details/SubscriptionScreen';
+import { GMPScreen } from '../screens/details/GMPScreen';
+import { AllotmentResultScreen } from '../screens/details/AllotmentResultScreen';
+import { IPOData } from '../data/dummyData';
+import { SearchScreen } from '../screens/SearchScreen';
 
 const Stack = createNativeStackNavigator();
 
 export type RootStackParamList = {
-    MainTabs: undefined;
-    IPOData: { ipoId: string };
-    SubscriptionStatus: { ipoId: string };
+    Root: { screen?: string } | undefined;
+    IPODetails: { ipo: IPOData };
+    SubscriptionStatus: { subscriptionDetails: any, name: string };
+    GMPStatus: { gmpDetails: any, name: string };
+    AllotmentResult: { ipoName: string; registrarLink?: string };
+    Search: undefined;
 };
 export const RootNavigator = () => {
+    const { colors } = useTheme();
+
     return (
-        <Stack.Navigator>
+        <Stack.Navigator
+            screenOptions={{
+                contentStyle: { backgroundColor: colors.background }
+            }}
+        >
             <Stack.Screen
                 name="Root"
                 component={BottomTabNavigator}
@@ -25,9 +37,34 @@ export const RootNavigator = () => {
                 name="IPODetails"
                 component={IPODetailsScreen}
                 options={{
-                    presentation: 'modal',
                     headerShown: false
                 }}
+            />
+            <Stack.Screen
+                name="SubscriptionStatus"
+                component={SubscriptionScreen}
+                options={{
+                    headerShown: false
+                }}
+            />
+            <Stack.Screen
+                name="GMPStatus"
+                component={GMPScreen}
+                options={{
+                    headerShown: false
+                }}
+            />
+            <Stack.Screen
+                name="AllotmentResult"
+                component={AllotmentResultScreen}
+                options={{
+                    headerShown: false
+                }}
+            />
+            <Stack.Screen
+                name="Search"
+                component={SearchScreen}
+                options={{ headerShown: false }}
             />
         </Stack.Navigator>
     );

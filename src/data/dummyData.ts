@@ -1,5 +1,7 @@
 export interface IPOData {
+    _id?: string;
     id: string;
+    symbol?: string;
     name: string;
     type: 'Mainboard' | 'SME';
     priceRange: string;
@@ -19,6 +21,27 @@ export interface IPOData {
         listing: string;
     };
     isAllotmentOut?: boolean;
+    rhpUrl?: string;
+    drhpUrl?: string;
+    registrarLink?: string;
+    swot?: {
+        strengths: string[];
+        weaknesses: string[];
+        opportunities: string[];
+        threats: string[];
+    };
+    subscriptionDetails?: {
+        qib: number;
+        nii: number;
+        retail: number;
+        employee: number;
+        total: number;
+    };
+    gmpDetails?: {
+        price: number;
+        date: string;
+        kostak: string;
+    }[];
 }
 
 const generateIPO = (id: string, name: string, type: 'Mainboard' | 'SME', status: 'Open' | 'Closed' | 'Upcoming'): IPOData => {
@@ -46,7 +69,12 @@ const generateIPO = (id: string, name: string, type: 'Mainboard' | 'SME', status
 
 export const DUMMY_IPOS: IPOData[] = [
     // Mainboard - Open
-    generateIPO('1', 'Zomato Limited', 'Mainboard', 'Open'),
+    {
+        ...generateIPO('1', 'Zomato Limited', 'Mainboard', 'Open'),
+        rhpUrl: 'https://www.sebi.gov.in/sebi_data/attachdocs/jul-2021/1625546682662.pdf', // Real Zomato RHP link
+        drhpUrl: 'https://www.sebi.gov.in/sebi_data/attachdocs/apr-2021/1619586156942.pdf', // Real Zomato DRHP link
+        registrarLink: 'https://linkintime.co.in/IPO/public-issues.html'
+    },
     generateIPO('2', 'LIC India', 'Mainboard', 'Open'),
     generateIPO('3', 'Ola Electric', 'Mainboard', 'Open'),
     generateIPO('4', 'Swiggy', 'Mainboard', 'Open'),

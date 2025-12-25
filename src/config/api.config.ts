@@ -3,5 +3,5 @@
 export const API_CONFIG = {
     BASE_URL: 'https://ipo-management-backend.vercel.app/api/v1',
     // For local development, uncomment the line below:
-    // BASE_URL: 'http://localhost:4000/api/v1',
+    // BASE_URL: 'http://10.119.62.227:4000/api/v1',
 };

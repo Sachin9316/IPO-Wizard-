@@ -8,17 +8,17 @@ import { AuthProvider } from './src/context/AuthContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 const AppContent = () => {
-    const { theme } = useTheme();
+    const { theme, colors } = useTheme();
 
     const MyDarkTheme = {
         ...DarkTheme,
         colors: {
             ...DarkTheme.colors,
             primary: '#BB86FC',
-            background: '#121212',
-            card: '#1E1E1E',
-            text: '#FFFFFF',
-            border: '#333333',
+            background: colors.background,
+            card: colors.card,
+            text: colors.text,
+            border: colors.border,
             notification: '#FF80AB',
         },
     };
@@ -28,32 +28,32 @@ const AppContent = () => {
         colors: {
             ...DefaultTheme.colors,
             primary: '#6200EE',
-            background: '#FFFFFF',
-            card: '#FFFFFF',
-            text: '#000000',
-            border: '#E0E0E0',
+            background: colors.background,
+            card: colors.card,
+            text: colors.text,
+            border: colors.border,
             notification: '#F50057',
         },
     };
 
     return (
-        <NavigationContainer theme={theme === 'dark' ? MyDarkTheme : MyLightTheme}>
-            <RootNavigator />
-            <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
-        </NavigationContainer>
+        <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+            <NavigationContainer theme={theme === 'dark' ? MyDarkTheme : MyLightTheme}>
+                <RootNavigator />
+                <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
+            </NavigationContainer>
+        </GestureHandlerRootView>
     );
 }
 
 export default function App() {
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <SafeAreaProvider>
-                <ThemeProvider>
-                    <AuthProvider>
-                        <AppContent />
-                    </AuthProvider>
-                </ThemeProvider>
-            </SafeAreaProvider>
-        </GestureHandlerRootView>
+        <SafeAreaProvider>
+            <ThemeProvider>
+                <AuthProvider>
+                    <AppContent />
+                </AuthProvider>
+            </ThemeProvider>
+        </SafeAreaProvider>
     );
 }

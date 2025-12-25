@@ -216,7 +216,7 @@ export const SavedPANsScreen = () => {
                         <Text style={[styles.statusText, { color: colors.primary }]}>Logged In</Text>
                     </View>
                 ) : (
-                    <TouchableOpacity style={styles.loginBanner} onPress={() => navigation.navigate('MainTabs', { screen: 'Profile' })}>
+                    <TouchableOpacity style={styles.loginBanner} onPress={() => navigation.navigate('Root', { screen: 'Profile' })}>
                         <View style={styles.statusRow}>
                             <CloudOff size={16} color={colors.text} />
                             <Text style={[styles.statusText, { color: colors.text }]}>Local Mode</Text>

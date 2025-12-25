@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { IPOData } from '../data/dummyData';
 import { TrendingUp, Users, Calendar, CircleDollarSign } from 'lucide-react-native';
@@ -11,6 +11,11 @@ interface IPOCardProps {
 
 export const IPOCard = ({ item, onPress }: IPOCardProps) => {
     const { colors } = useTheme();
+    const [imageError, setImageError] = React.useState(false);
+
+    React.useEffect(() => {
+        setImageError(false);
+    }, [item.logoUrl]);
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -28,39 +33,44 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
             activeOpacity={0.9}
         >
             <View style={styles.header}>
-                <View style={styles.logoContainer}>
-                    {item.logoUrl ? (
-                        <View style={[styles.logoplaceholder, { backgroundColor: colors.border }]}>
-                            {/* In real app, use Image here */}
-                            <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>LOGO</Text>
-                        </View>
-                    ) : (
-                        <View style={[styles.logoplaceholder, { backgroundColor: colors.border }]}>
-                            <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>IMG</Text>
-                        </View>
+                <View style={[styles.logoContainer, { width: 44, height: 44 }]}>
+                    <View style={[styles.logoplaceholder, { backgroundColor: colors.border, position: 'absolute', width: '100%', height: '100%' }]}>
+                        <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>LOGO</Text>
+                    </View>
+                    {item.logoUrl && !imageError && (
+                        <Image
+                            source={{ uri: item.logoUrl }}
+                            style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                            resizeMode="contain"
+                            onError={() => setImageError(true)}
+                        />
                     )}
                 </View>
 
                 <View style={styles.headerContent}>
                     <View style={styles.titleRow}>
-                        <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-
-                        {item.status === 'Closed' && (
-                            <View style={[styles.allotmentBadge, {
-                                backgroundColor: item.isAllotmentOut ? '#E3F2FD' : '#FFF3E0'
-                            }]}>
-                                <Text style={[styles.allotmentText, {
-                                    color: item.isAllotmentOut ? '#2196F3' : '#FF9800'
-                                }]}>
-                                    {item.isAllotmentOut ? 'ALLOTMENT OUT' : 'ALLOTMENT AWAITED'}
-                                </Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                            <View style={styles.subtitleRow}>
+                                <Text style={[styles.typeBadge, { color: colors.primary, borderColor: colors.primary }]}>{item.type}</Text>
+                                <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
+                                <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
                             </View>
-                        )}
-                    </View>
-                    <View style={styles.subtitleRow}>
-                        <Text style={[styles.typeBadge, { color: colors.primary, borderColor: colors.primary }]}>{item.type}</Text>
-                        <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
-                        <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
+                        </View>
+
+                        {/* GMP / Allotment on Top Right */}
+                        <View style={{ alignItems: 'flex-end' }}>
+                            {item.status === 'Closed' && item.isAllotmentOut ? (
+                                <View style={[styles.allotmentBadge, { backgroundColor: '#E3F2FD', marginBottom: 4 }]}>
+                                    <Text style={[styles.allotmentText, { color: '#2196F3' }]}>ALLOTMENT OUT</Text>
+                                </View>
+                            ) : (
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={[styles.gmpLabel, { color: colors.text, marginBottom: 0 }]}>GMP</Text>
+                                    <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
+                                </View>
+                            )}
+                        </View>
                     </View>
                 </View>
             </View>
@@ -68,27 +78,27 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             <View style={styles.statsContainer}>
-                {/* Row 1: Price | GMP */}
+                {/* Single Row: Dates | Price | Lot */}
                 <View style={styles.statRow}>
                     <View style={styles.statItem}>
+                        <Text style={[styles.statLabel, { color: colors.text }]}>OFFER DATES</Text>
+                        <Text style={[styles.statValue, { color: colors.text }]}>{item.dates.offerStart}-{item.dates.offerEnd}</Text>
+                    </View>
+
+                    {/* Vertical Divider */}
+                    <View style={{ width: 1, height: '80%', backgroundColor: colors.border, marginHorizontal: 8 }} />
+
+                    <View style={[styles.statItem, { alignItems: 'center' }]}>
                         <Text style={[styles.statLabel, { color: colors.text }]}>PRICE RANGE</Text>
                         <Text style={[styles.statValue, { color: colors.text }]}>{item.priceRange}</Text>
                     </View>
-                    <View style={styles.statItemRight}>
-                        <Text style={[styles.statLabel, { color: colors.text }]}>GMP</Text>
-                        <Text style={[styles.statValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
-                    </View>
-                </View>
 
-                {/* Row 2: Dates | Lot Size */}
-                <View style={[styles.statRow, { marginTop: 12 }]}>
-                    <View style={styles.statItem}>
-                        <Text style={[styles.statLabel, { color: colors.text }]}>OFFER DATES</Text>
-                        <Text style={[styles.statValue, { color: colors.text }]}>{item.dates.offerStart} - {item.dates.offerEnd}</Text>
-                    </View>
-                    <View style={styles.statItemRight}>
+                    {/* Vertical Divider */}
+                    <View style={{ width: 1, height: '80%', backgroundColor: colors.border, marginHorizontal: 8 }} />
+
+                    <View style={[styles.statItem, { alignItems: 'flex-end' }]}>
                         <Text style={[styles.statLabel, { color: colors.text }]}>LOT SIZE</Text>
-                        <Text style={[styles.statValue, { color: colors.text }]}>{item.lotSize} Shares</Text>
+                        <Text style={[styles.statValue, { color: colors.text }]}>{item.lotSize}</Text>
                     </View>
                 </View>
             </View>
@@ -99,21 +109,18 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
 const styles = StyleSheet.create({
     card: {
         borderRadius: 12,
-        marginBottom: 16,
+        marginBottom: 12,
         borderWidth: 1,
         // Shadow for depth
         shadowColor: "#000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.05,
         shadowRadius: 3.84,
         elevation: 2,
     },
     header: {
         flexDirection: 'row',
-        padding: 16,
+        padding: 12,
         alignItems: 'center',
     },
     logoContainer: {
@@ -133,14 +140,12 @@ const styles = StyleSheet.create({
     titleRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4,
+        alignItems: 'flex-start', // Align to top
     },
     title: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
-        flex: 1,
-        marginRight: 8,
+        marginBottom: 4,
     },
     allotmentBadge: {
         paddingHorizontal: 6,
@@ -148,7 +153,7 @@ const styles = StyleSheet.create({
         borderRadius: 4,
     },
     allotmentText: {
-        fontSize: 9, // Slightly smaller font for longer text
+        fontSize: 9,
         fontWeight: 'bold',
     },
     subtitleRow: {
@@ -156,13 +161,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     typeBadge: {
-        fontSize: 10,
+        fontSize: 9,
         fontWeight: '600',
         borderWidth: 1,
         borderRadius: 4,
         paddingHorizontal: 4,
         paddingVertical: 1,
-        marginRight: 8,
+        marginRight: 6,
         textTransform: 'uppercase',
     },
     statusDot: {
@@ -172,7 +177,7 @@ const styles = StyleSheet.create({
         marginRight: 4,
     },
     statusText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '600',
     },
     divider: {
@@ -180,8 +185,8 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     statsContainer: {
-        padding: 16,
-        paddingTop: 12,
+        padding: 12,
+        paddingVertical: 10,
     },
     statRow: {
         flexDirection: 'row',
@@ -190,21 +195,26 @@ const styles = StyleSheet.create({
     },
     statItem: {
         flex: 1,
-        alignItems: 'flex-start',
-    },
-    statItemRight: {
-        flex: 1,
-        alignItems: 'flex-end',
+        // alignItems set inline
     },
     statLabel: {
-        fontSize: 10,
-        opacity: 0.5,
+        fontSize: 9,
+        opacity: 0.6,
         fontWeight: '600',
         marginBottom: 2,
         letterSpacing: 0.5,
     },
     statValue: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
+    },
+    gmpLabel: {
+        fontSize: 9,
+        opacity: 0.6,
+        fontWeight: '600',
+    },
+    gmpValue: {
+        fontSize: 16,
+        fontWeight: '700',
     }
 });

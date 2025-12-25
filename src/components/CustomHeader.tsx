@@ -4,8 +4,11 @@ import { useTheme } from '../theme/ThemeContext';
 import { Search, Moon, Sun } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { useNavigation } from '@react-navigation/native';
+
 export const CustomHeader = ({ title }: { title: string }) => {
     const { theme, toggleTheme, colors } = useTheme();
+    const navigation = useNavigation<any>();
 
     return (
         <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
@@ -19,7 +22,10 @@ export const CustomHeader = ({ title }: { title: string }) => {
                             <Moon color={colors.text} size={24} />
                         )}
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
+                    <TouchableOpacity
+                        style={styles.iconButton}
+                        onPress={() => navigation.navigate('Search')}
+                    >
                         <Search color={colors.text} size={24} />
                     </TouchableOpacity>
                 </View>

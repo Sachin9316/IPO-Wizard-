@@ -8,6 +8,7 @@ export type TopTabParamList = {
     SME: { type: 'SME' };
     Listed: { type: 'Listed' };
     Alloted: { type: 'Alloted' };
+    Watchlist: { type: 'Watchlist' };
 };
 
 const Tab = createMaterialTopTabNavigator<TopTabParamList>();
@@ -23,13 +24,15 @@ export const TopTabNavigator = () => {
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.text,
                 tabBarIndicatorStyle: { backgroundColor: colors.primary },
+                tabBarScrollEnabled: true,
+                tabBarItemStyle: { width: 'auto', minWidth: 100 },
             }}
         >
             <Tab.Screen
                 name="Mainboard"
                 component={IPOListScreen}
                 initialParams={{ type: 'Mainboard' }}
-                options={{ title: 'Mainboard' }}
+                options={{ title: 'Upcoming' }}
             />
             <Tab.Screen
                 name="SME"
@@ -48,6 +51,12 @@ export const TopTabNavigator = () => {
                 component={IPOListScreen}
                 initialParams={{ type: 'Alloted' }}
                 options={{ title: 'Alloted' }}
+            />
+            <Tab.Screen
+                name="Watchlist"
+                component={IPOListScreen}
+                initialParams={{ type: 'Watchlist' }}
+                options={{ title: 'Watchlist' }}
             />
         </Tab.Navigator>
     );

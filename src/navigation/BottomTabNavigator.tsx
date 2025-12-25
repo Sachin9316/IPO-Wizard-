@@ -55,6 +55,6 @@ export const BottomTabNavigator = () => {
                     header: () => <CustomHeader title="Profile" />
                 }}
             />
-        </Tab.Navigator>
+        </Tab.Navigator >
     );
 };

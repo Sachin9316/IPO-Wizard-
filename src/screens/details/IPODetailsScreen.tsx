@@ -1,13 +1,33 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../data/dummyData';
-import { X, Calendar, CheckCircle, FileText, TrendingUp, Users } from 'lucide-react-native';
+import { X, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../../context/AuthContext';
+import { toggleWatchlist } from '../../services/api';
 
 export const IPODetailsScreen = ({ route, navigation }: any) => {
     const { colors } = useTheme();
+    const { user, token, refreshProfile, isAuthenticated } = useAuth();
     const item: IPOData = route.params.item;
+    const ipoId = item._id || item.id; // Fallback to id if _id missing (dummy data)
+
+    const isWatchlisted = user?.watchlist?.includes(ipoId);
+
+    const handleToggleWatchlist = async () => {
+        if (!isAuthenticated || !token) {
+            Alert.alert("Login Required", "Please login to add to watchlist");
+            return;
+        }
+        try {
+            await toggleWatchlist(token, ipoId);
+            await refreshProfile();
+        } catch (error) {
+            Alert.alert("Error", "Failed to update watchlist");
+        }
+    };
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
@@ -16,7 +36,13 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                     <X color={colors.text} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{item.name}</Text>
-                <View style={{ width: 24 }} />
+                <TouchableOpacity onPress={handleToggleWatchlist} style={styles.closeBtn}>
+                    <Heart
+                        color={isWatchlisted ? "#E91E63" : colors.text}
+                        fill={isWatchlisted ? "#E91E63" : "transparent"}
+                        size={24}
+                    />
+                </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
@@ -45,28 +71,93 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
 
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-                    <View style={styles.actionsContainer}>
+                    <View style={styles.actionsGrid}>
+                        {/* Essential Documents */}
+                        {item.rhpUrl && (
+                            <ActionIconButton
+                                icon={<FileText size={24} color={colors.primary} />}
+                                label="RHP PDF"
+                                backgroundColor={colors.card}
+                                borderColor={colors.border}
+                                onPress={() => Linking.openURL(item.rhpUrl!).catch(err => Alert.alert('Error', 'Could not open link'))}
+                            />
+                        )}
+                        {item.drhpUrl && (
+                            <ActionIconButton
+                                icon={<FileText size={24} color={colors.text} />}
+                                label="DRHP PDF"
+                                backgroundColor={colors.card}
+                                borderColor={colors.border}
+                                onPress={() => Linking.openURL(item.drhpUrl!).catch(err => Alert.alert('Error', 'Could not open link'))}
+                            />
+                        )}
+
+                        {/* Live Subscription */}
                         <ActionIconButton
-                            icon={<CheckCircle size={24} color="#fff" />}
-                            label="Apply"
-                            backgroundColor="#4CAF50"
-                        />
-                        <ActionIconButton
-                            icon={<FileText size={24} color="#fff" />}
-                            label="Application"
-                            backgroundColor={colors.primary}
-                        />
-                        <ActionIconButton
-                            icon={<TrendingUp size={24} color={colors.text} />}
-                            label="Subscription"
+                            icon={<TrendingUp size={24} color="#4CAF50" />}
+                            label="Live Subs"
                             backgroundColor={colors.card}
                             borderColor={colors.border}
+                            onPress={() => {
+                                if (item.subscriptionDetails) {
+                                    navigation.navigate('SubscriptionStatus', { subscriptionDetails: item.subscriptionDetails, name: item.name });
+                                } else {
+                                    Alert.alert('Info', 'Subscription data not available yet');
+                                }
+                            }}
                         />
+
+                        {/* GMP Trend */}
                         <ActionIconButton
-                            icon={<Users size={24} color={colors.text} />}
+                            icon={<TrendingUp size={24} color="#FF9800" />}
+                            label="GMP Trend"
+                            backgroundColor={colors.card}
+                            borderColor={colors.border}
+                            onPress={() => {
+                                if (item.gmpDetails && item.gmpDetails.length > 0) {
+                                    navigation.navigate('GMPStatus', { gmpDetails: item.gmpDetails, name: item.name });
+                                } else {
+                                    Alert.alert('Info', 'GMP data not available yet');
+                                }
+                            }}
+                        />
+
+                        {/* Allotment Status */}
+                        <ActionIconButton
+                            icon={<CheckCircle size={24} color={item.isAllotmentOut ? "#2196F3" : colors.text} />}
                             label="Allotment"
                             backgroundColor={colors.card}
                             borderColor={colors.border}
+                            onPress={async () => {
+                                if (!item.isAllotmentOut) {
+                                    Alert.alert('Info', 'Allotment is not out yet.');
+                                    return;
+                                }
+
+                                // Check if user has ANY PANs (Local or Cloud)
+                                let hasPans = false;
+                                try {
+                                    const storedLocal = await AsyncStorage.getItem('unsaved_pans');
+                                    if (storedLocal && JSON.parse(storedLocal).length > 0) hasPans = true;
+
+                                    if (!hasPans && isAuthenticated && user?.panDocuments?.length > 0) {
+                                        hasPans = true;
+                                    }
+                                } catch (e) { console.error(e); }
+
+                                if (hasPans) {
+                                    navigation.navigate('AllotmentResult', { ipo: item });
+                                } else {
+                                    Alert.alert(
+                                        "No PANs Found",
+                                        "Please add at least one PAN in your Profile to check allotment.",
+                                        [
+                                            { text: "Cancel", style: "cancel" },
+                                            { text: "Add PAN", onPress: () => navigation.navigate("MainTabs", { screen: "PANs" }) }
+                                        ]
+                                    );
+                                }
+                            }}
                         />
                     </View>
                 </View>
@@ -93,8 +184,8 @@ const TimelineItem = ({ label, date, colors, isLast }: any) => (
 )
 
 
-const ActionIconButton = ({ icon, label, backgroundColor, borderColor }: any) => (
-    <TouchableOpacity style={styles.actionIconButton}>
+const ActionIconButton = ({ icon, label, backgroundColor, borderColor, onPress }: any) => (
+    <TouchableOpacity style={styles.actionIconButton} onPress={onPress}>
         <View style={[
             styles.iconCircle,
             {
@@ -178,9 +269,10 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: 'bold',
     },
-    actionsContainer: {
+    actionsGrid: {
         flexDirection: 'row',
-        justifyContent: 'space-around',
+        flexWrap: 'wrap',
+        gap: 16,
         paddingVertical: 8,
     },
     actionIconButton: {
