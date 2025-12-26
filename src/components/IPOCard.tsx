@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { IPOData } from '../data/dummyData';
+import { IPOData } from '../types/ipo';
 import { TrendingUp, Users, Calendar, CircleDollarSign } from 'lucide-react-native';
 
 interface IPOCardProps {

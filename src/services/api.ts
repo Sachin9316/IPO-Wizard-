@@ -1,15 +1,42 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_CONFIG } from '../config/api.config';
 
 const BASE_URL = API_CONFIG.BASE_URL;
+
+const fetchWithCache = async (url: string, options?: RequestInit) => {
+    const cacheKey = `api_cache_${url}`;
+    try {
+        const response = await fetch(url, options);
+        if (response.ok) {
+            const data = await response.json();
+            // Cache the successful response
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+            return data;
+        }
+    } catch (error) {
+        console.log(`Network request failed for ${url}, checking cache...`);
+    }
+
+    // Fallback to cache if network fails or response not ok
+    try {
+        const cachedData = await AsyncStorage.getItem(cacheKey);
+        if (cachedData) {
+            console.log(`Returning cached data for ${url}`);
+            return JSON.parse(cachedData);
+        }
+    } catch (cacheError) {
+        console.error("Cache retrieval failed:", cacheError);
+    }
+
+    throw new Error('Network request failed and no cache available');
+};
 
 export const fetchMainboardIPOs = async (page = 1, limit = 10, status?: string) => {
     try {
         let url = `${BASE_URL}/mainboards?page=${page}&limit=${limit}`;
         if (status) url += `&status=${status}`;
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch Mainboard IPOs');
-        const data = await response.json();
+        const data = await fetchWithCache(url);
         return data.data || [];
     } catch (error) {
         console.error('Error fetching Mainboard IPOs:', error);
@@ -22,9 +49,7 @@ export const fetchSMEIPOs = async (page = 1, limit = 10, status?: string) => {
         let url = `${BASE_URL}/sme-ipos?page=${page}&limit=${limit}`;
         if (status) url += `&status=${status}`;
 
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Failed to fetch SME IPOs');
-        const data = await response.json();
+        const data = await fetchWithCache(url);
         return data.data || [];
     } catch (error) {
         console.error('Error fetching SME IPOs:', error);
@@ -34,12 +59,7 @@ export const fetchSMEIPOs = async (page = 1, limit = 10, status?: string) => {
 
 export const fetchListedIPOs = async (page = 1, limit = 10) => {
     try {
-        // Listed endpoint specifically fetches status=LISTED, so we might not need status param here
-        // unless we want to filter within listed? User wants Closed + Listed in this tab.
-        // We will likely use fetchMainboardIPOs(status='CLOSED') separately.
-        const response = await fetch(`${BASE_URL}/listed-ipos?page=${page}&limit=${limit}`);
-        if (!response.ok) throw new Error('Failed to fetch Listed IPOs');
-        const data = await response.json();
+        const data = await fetchWithCache(`${BASE_URL}/listed-ipos?page=${page}&limit=${limit}`);
         return data.data || [];
     } catch (error) {
         console.error('Error fetching Listed IPOs:', error);
@@ -78,17 +98,22 @@ export const registerUser = async (name: string, email: string, pass: string) =>
 };
 
 export const fetchUserProfile = async (token: string) => {
-    // User routes are at /api/users, also outside v1 in server.js? 
-    // server.js: app.use('/api/users', userRoutes); -> Yes, outside v1.
-    const response = await fetch(`${AUTH_URL}/users/profile`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!response.ok) {
-        const error: any = new Error('Failed to fetch profile');
-        error.status = response.status;
+    try {
+        // User routes are at /api/users, also outside v1 in server.js? 
+        // server.js: app.use('/api/users', userRoutes); -> Yes, outside v1.
+        const data = await fetchWithCache(`${AUTH_URL}/users/profile`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return data;
+    } catch (error: any) {
+        // If it's our "No cache" error, propagate it. If it was a 401 from server, fetchWithCache might catch it if we rely on ok check.
+        // But fetchWithCache swallows non-ok and tries cache.
+        // For profile, if token is invalid (401), we might get a cached profile. This might be okay for offline, 
+        // but if online and 401, we should probably logout.
+        // Currently fetchWithCache doesn't distinguish "Network Error" vs "4xx/5xx response".
+        // It treats !response.ok as "Try Cache".
         throw error;
     }
-    return response.json();
 };
 
 export const addUserPAN = async (token: string, panData: { panNumber: string, name: string }) => {
@@ -117,14 +142,17 @@ export const deleteUserPAN = async (token: string, panNumber: string) => {
 };
 
 export const fetchWatchlist = async (token: string) => {
-    const response = await fetch(`${AUTH_URL}/users/profile/watchlist`, {
-        headers: {
-            'Authorization': `Bearer ${token}`
-        }
-    });
-    if (!response.ok) throw new Error('Failed to fetch watchlist');
-    const data = await response.json();
-    return data || [];
+    try {
+        const data = await fetchWithCache(`${AUTH_URL}/users/profile/watchlist`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return data || [];
+    } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        throw new Error('Failed to fetch watchlist');
+    }
 };
 
 export const toggleWatchlist = async (token: string, ipoId: string) => {

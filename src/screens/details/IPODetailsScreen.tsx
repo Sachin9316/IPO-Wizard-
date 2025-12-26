@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { IPOData } from '../../data/dummyData';
+import { IPOData } from '../../types/ipo';
 import { X, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
@@ -18,7 +18,14 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
 
     const handleToggleWatchlist = async () => {
         if (!isAuthenticated || !token) {
-            Alert.alert("Login Required", "Please login to add to watchlist");
+            Alert.alert(
+                "Login Required",
+                "Please login to add to watchlist",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Login", onPress: () => navigation.navigate("Root", { screen: "Profile" }) }
+                ]
+            );
             return;
         }
         try {
@@ -153,7 +160,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                         "Please add at least one PAN in your Profile to check allotment.",
                                         [
                                             { text: "Cancel", style: "cancel" },
-                                            { text: "Add PAN", onPress: () => navigation.navigate("MainTabs", { screen: "PANs" }) }
+                                            { text: "Add PAN", onPress: () => navigation.navigate("Root", { screen: "PANs" }) }
                                         ]
                                     );
                                 }

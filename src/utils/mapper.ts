@@ -1,4 +1,4 @@
-import { IPOData } from '../data/dummyData';
+import { IPOData } from '../types/ipo';
 import moment from 'moment';
 
 export const mapBackendToFrontend = (backendData: any): IPOData => {

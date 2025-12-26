@@ -6,7 +6,7 @@ import { IPODetailsScreen } from '../screens/details/IPODetailsScreen';
 import { SubscriptionScreen } from '../screens/details/SubscriptionScreen';
 import { GMPScreen } from '../screens/details/GMPScreen';
 import { AllotmentResultScreen } from '../screens/details/AllotmentResultScreen';
-import { IPOData } from '../data/dummyData';
+import { IPOData } from '../types/ipo';
 import { SearchScreen } from '../screens/SearchScreen';
 
 const Stack = createNativeStackNavigator();

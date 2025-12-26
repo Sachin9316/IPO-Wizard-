@@ -6,7 +6,7 @@ import { Search, X, ArrowLeft, TrendingUp } from 'lucide-react-native';
 import { api } from '../services/api';
 
 import { mapBackendToFrontend } from '../utils/mapper';
-import { IPOData } from '../data/dummyData';
+import { IPOData } from '../types/ipo';
 
 export const SearchScreen = ({ navigation }: any) => {
     const { colors } = useTheme();

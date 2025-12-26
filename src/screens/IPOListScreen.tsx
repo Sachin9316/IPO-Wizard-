@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { IPOData } from '../data/dummyData';
+import { IPOData } from '../types/ipo';
 import { IPOCard } from '../components/IPOCard';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { fetchMainboardIPOs, fetchSMEIPOs, fetchListedIPOs, fetchWatchlist } from '../services/api';

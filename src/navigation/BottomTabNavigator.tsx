@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { TopTabNavigator } from './TopTabNavigator';
+import { IPOListScreen } from '../screens/IPOListScreen';
 import { PANsNavigator } from './PANsNavigator';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { CustomHeader } from '../components/CustomHeader';
@@ -43,6 +44,17 @@ export const BottomTabNavigator = () => {
                     tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
                     headerShown: true,
                     header: () => <CustomHeader title="PAN's" />
+                }}
+            />
+            <Tab.Screen
+                name="Alloted"
+                component={IPOListScreen}
+                initialParams={{ type: 'Alloted' }}
+                options={{
+                    tabBarLabel: 'Allotment',
+                    tabBarIcon: ({ color, size }) => <PieChart color={color} size={size} />,
+                    headerShown: true,
+                    header: () => <CustomHeader title="Allotment Status" />
                 }}
             />
             <Tab.Screen

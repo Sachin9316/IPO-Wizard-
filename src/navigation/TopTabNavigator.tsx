@@ -46,12 +46,7 @@ export const TopTabNavigator = () => {
                 initialParams={{ type: 'Listed' }}
                 options={{ title: 'Listed' }}
             />
-            <Tab.Screen
-                name="Alloted"
-                component={IPOListScreen}
-                initialParams={{ type: 'Alloted' }}
-                options={{ title: 'Alloted' }}
-            />
+
             <Tab.Screen
                 name="Watchlist"
                 component={IPOListScreen}
