@@ -12,6 +12,8 @@ import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { LicensesScreen } from '../screens/LicensesScreen';
 import { ReportIssueScreen } from '../screens/ReportIssueScreen';
 
+import { ComparisonScreen } from '../screens/details/ComparisonScreen';
+
 const Stack = createNativeStackNavigator();
 
 export type RootStackParamList = {
@@ -85,6 +87,11 @@ export const RootNavigator = () => {
             <Stack.Screen
                 name="ReportIssue"
                 component={ReportIssueScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="Comparison"
+                component={ComparisonScreen}
                 options={{ headerShown: false }}
             />
         </Stack.Navigator>

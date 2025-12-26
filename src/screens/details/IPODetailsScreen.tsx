@@ -3,17 +3,19 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
-import { X, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart } from 'lucide-react-native';
+import { X, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart, ArrowLeftRight } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { toggleWatchlist } from '../../services/api';
 import { SkeletonDetail } from '../../components/SkeletonDetail';
+import { IPOSelectionModal } from '../../components/IPOSelectionModal';
 
 export const IPODetailsScreen = ({ route, navigation }: any) => {
     const { colors } = useTheme();
     const { user, token, refreshProfile, isAuthenticated } = useAuth();
     const item: IPOData = route.params.item;
     const [loading, setLoading] = React.useState(true);
+    const [showSelectionModal, setShowSelectionModal] = React.useState(false);
 
     React.useEffect(() => {
         // Smooth transition effect
@@ -51,13 +53,21 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                     <X color={colors.text} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{item.name}</Text>
-                <TouchableOpacity onPress={handleToggleWatchlist} style={styles.closeBtn}>
-                    <Heart
-                        color={isWatchlisted ? "#E91E63" : colors.text}
-                        fill={isWatchlisted ? "#E91E63" : "transparent"}
-                        size={24}
-                    />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        onPress={() => setShowSelectionModal(true)}
+                        style={[styles.closeBtn, { marginRight: 8 }]}
+                    >
+                        <ArrowLeftRight color={colors.text} size={24} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleToggleWatchlist} style={styles.closeBtn}>
+                        <Heart
+                            color={isWatchlisted ? "#E91E63" : colors.text}
+                            fill={isWatchlisted ? "#E91E63" : "transparent"}
+                            size={24}
+                        />
+                    </TouchableOpacity>
+                </View>
             </View>
 
             {loading ? (
@@ -181,6 +191,16 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                     </View>
                 </ScrollView>
             )}
+
+            <IPOSelectionModal
+                visible={showSelectionModal}
+                onClose={() => setShowSelectionModal(false)}
+                onSelect={(ipo2) => {
+                    setShowSelectionModal(false);
+                    navigation.navigate('Comparison', { ipo1: item, ipo2 });
+                }}
+                currentItemId={ipoId}
+            />
         </SafeAreaView>
     );
 };
