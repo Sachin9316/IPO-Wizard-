@@ -1,50 +1,150 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, Clipboard, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, TextInput, ScrollView, Alert } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Mail, Copy } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
+import { ArrowLeft, Send, Mail, CheckCircle2 } from 'lucide-react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+
+const ISSUES = [
+    "Declared Allotted but showing Not Allotted",
+    "Missing allotments from search results",
+    "Incorrect number of shares/lots shown",
+    "PAN/Account name mismatch",
+    "Technical error during check",
+    "Other"
+];
 
 export const ReportIssueScreen = () => {
     const { colors } = useTheme();
     const navigation = useNavigation();
-    const email = 'sachinu829@gmail.com';
+    const route = useRoute();
+    const params = (route.params as any) || {};
+    const { ipoName, userName, panNumber, allotmentStatus } = params;
 
-    const handleEmailPress = () => {
-        Linking.openURL(`mailto:${email}`);
+    const [selectedIssue, setSelectedIssue] = useState(ISSUES[0]);
+    const [message, setMessage] = useState('');
+    const [isEdited, setIsEdited] = useState(false);
+    const supportEmail = 'sachinu829@gmail.com';
+
+    useEffect(() => {
+        // If the user hasn't manually edited the message, update it when issue/params change
+        if (!isEdited) {
+            const template = `Hello Support Team,
+
+I am reporting an issue regarding my IPO allotment status.
+
+Details:
+- IPO Name: ${ipoName || 'N/A'}
+- User Name: ${userName || 'N/A'}
+- PAN Number: ${panNumber || 'N/A'}
+- Current Allotment Status In App: ${allotmentStatus || 'N/A'}
+
+Issue: ${selectedIssue}
+
+Additional Details:
+[Please add any other relevant information here]
+
+Thank you.`;
+            setMessage(template);
+        }
+    }, [ipoName, userName, panNumber, allotmentStatus, selectedIssue, isEdited]);
+
+    const handleSendEmail = () => {
+        const subject = encodeURIComponent(`[Issue] Allotment Status: ${ipoName || 'General'}`);
+        const body = encodeURIComponent(message);
+        const mailtoUrl = `mailto:${supportEmail}?subject=${subject}&body=${body}`;
+
+        Linking.canOpenURL(mailtoUrl).then(supported => {
+            if (supported) {
+                Linking.openURL(mailtoUrl);
+            } else {
+                Alert.alert("Error", "Could not open email app. Please copy the email address manually.");
+            }
+        });
     };
 
-    const handleCopyPress = () => {
-        Clipboard.setString(email);
-        Alert.alert("Copied", "Email address copied to clipboard.");
+    const handleMessageChange = (text: string) => {
+        setMessage(text);
+        setIsEdited(true); // Mark as edited so template doesn't overwrite it
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={styles.header}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+            <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <ArrowLeft color={colors.text} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.title, { color: colors.text }]}>Report an Issue</Text>
+                <View style={{ width: 24 }} />
             </View>
 
-            <View style={styles.content}>
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                    <Mail size={48} color={colors.primary} style={styles.icon} />
-                    <Text style={[styles.description, { color: colors.text }]}>
-                        If you are facing any issues or have queries regarding the allotment status, please contact us at:
-                    </Text>
-
-                    <TouchableOpacity onPress={handleEmailPress} style={[styles.emailContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                        <Text style={[styles.emailText, { color: colors.primary }]}>{email}</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={handleCopyPress} style={styles.copyButton}>
-                        <Copy size={16} color={colors.text} style={{ opacity: 0.6 }} />
-                        <Text style={[styles.copyText, { color: colors.text }]}>Copy Email</Text>
-                    </TouchableOpacity>
+            <ScrollView contentContainerStyle={styles.content}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>What is the issue?</Text>
+                <View style={styles.issuesList}>
+                    {ISSUES.map((issue) => (
+                        <TouchableOpacity
+                            key={issue}
+                            onPress={() => setSelectedIssue(issue)}
+                            style={[
+                                styles.issueItem,
+                                {
+                                    backgroundColor: colors.card,
+                                    borderColor: selectedIssue === issue ? colors.primary : colors.border
+                                }
+                            ]}
+                        >
+                            <Text style={[
+                                styles.issueText,
+                                {
+                                    color: colors.text,
+                                    fontWeight: selectedIssue === issue ? '600' : '400'
+                                }
+                            ]}>
+                                {issue}
+                            </Text>
+                            {selectedIssue === issue && (
+                                <CheckCircle2 size={16} color={colors.primary} />
+                            )}
+                        </TouchableOpacity>
+                    ))}
                 </View>
-            </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 24 }]}>Message Template</Text>
+                <TextInput
+                    style={[
+                        styles.textInput,
+                        {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                            color: colors.text
+                        }
+                    ]}
+                    multiline
+                    numberOfLines={10}
+                    value={message}
+                    onChangeText={handleMessageChange}
+                    textAlignVertical="top"
+                />
+
+                <TouchableOpacity
+                    onPress={handleSendEmail}
+                    style={[styles.sendButton, { backgroundColor: colors.primary }]}
+                >
+                    <Send size={18} color="#FFF" />
+                    <Text style={styles.sendButtonText}>Send via Email</Text>
+                </TouchableOpacity>
+
+                <View style={[styles.infoBox, { backgroundColor: colors.card + '80' }]}>
+                    <Mail size={16} color={colors.text} opacity={0.6} />
+                    <Text style={[styles.infoText, { color: colors.text }]}>
+                        Sent to: {supportEmail}
+                    </Text>
+                </View>
+
+                <Text style={[styles.footerText, { color: colors.text }]}>
+                    Your name and PAN details are automatically included in the template to help us resolve the issue faster.
+                </Text>
+            </ScrollView>
         </SafeAreaView>
     );
 };
@@ -54,47 +154,74 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'space-between',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.1)',
     },
-    backButton: { marginRight: 16 },
-    title: { fontSize: 20, fontWeight: 'bold' },
-    content: { flex: 1, padding: 20, justifyContent: 'center' },
-    card: {
-        padding: 24,
-        borderRadius: 16,
-        borderWidth: 1,
-        alignItems: 'center',
-        elevation: 2,
-    },
-    icon: { marginBottom: 20 },
-    description: {
+    backButton: { padding: 4 },
+    title: { fontSize: 18, fontWeight: 'bold' },
+    content: { padding: 20 },
+    sectionTitle: {
         fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 24,
-        opacity: 0.8,
-        lineHeight: 24,
-    },
-    emailContainer: {
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 12,
-        borderWidth: 1,
-        marginBottom: 16,
-    },
-    emailText: {
-        fontSize: 18,
         fontWeight: 'bold',
+        marginBottom: 12,
     },
-    copyButton: {
+    issuesList: {
+        gap: 8,
+    },
+    issueItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        padding: 8,
+        justifyContent: 'space-between',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
     },
-    copyText: {
+    issueText: {
         fontSize: 14,
+        flex: 1,
+        marginRight: 10,
+    },
+    textInput: {
+        borderRadius: 8,
+        borderWidth: 1,
+        padding: 12,
+        fontSize: 14,
+        minHeight: 200,
+        marginBottom: 24,
+    },
+    sendButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+        paddingVertical: 14,
+        borderRadius: 12,
+        marginBottom: 16,
+    },
+    sendButtonText: {
+        color: '#FFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+    infoBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 16,
+    },
+    infoText: {
+        fontSize: 13,
         opacity: 0.6,
     },
+    footerText: {
+        fontSize: 12,
+        textAlign: 'center',
+        opacity: 0.5,
+        lineHeight: 18,
+        marginBottom: 20,
+    }
 });

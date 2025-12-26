@@ -154,6 +154,12 @@ export const GMPScreen = ({ route, navigation }: any) => {
                         </View>
                     ))}
                 </View>
+
+                <View style={[styles.disclaimerContainer, { borderTopColor: colors.border }]}>
+                    <Text style={[styles.disclaimerText, { color: colors.text }]}>
+                        * GMP is based on market rumors and trends. It is for informational purposes only and does not guarantee the actual listing price.
+                    </Text>
+                </View>
             </ScrollView>
         </SafeAreaView>
     );
@@ -244,5 +250,16 @@ const styles = StyleSheet.create({
     priceText: {
         fontSize: 14,
         fontWeight: 'bold',
+    },
+    disclaimerContainer: {
+        marginTop: 24,
+        paddingTop: 12,
+        borderTopWidth: 0.5,
+        opacity: 0.6,
+    },
+    disclaimerText: {
+        fontSize: 10,
+        fontStyle: 'italic',
+        textAlign: 'center',
     },
 });

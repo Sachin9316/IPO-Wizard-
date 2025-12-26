@@ -19,11 +19,11 @@ export type RootStackParamList = {
     IPODetails: { ipo: IPOData };
     SubscriptionStatus: { subscriptionDetails: any, name: string };
     GMPStatus: { gmpDetails: any, name: string };
-    AllotmentResult: { ipoName: string; registrarLink?: string };
+    AllotmentResult: { ipo: IPOData };
     Search: undefined;
     PrivacyPolicy: undefined;
     Licenses: undefined;
-    ReportIssue: undefined;
+    ReportIssue: { ipoName: string; userName: string; panNumber: string; allotmentStatus: string };
 };
 export const RootNavigator = () => {
     const { colors } = useTheme();

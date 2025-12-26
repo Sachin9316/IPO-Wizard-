@@ -130,9 +130,14 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
     const [activeMenuPan, setActiveMenuPan] = useState<string | null>(null);
 
-    const handleReportPress = () => {
+    const handleReportPress = (item: AllotmentResult) => {
         setActiveMenuPan(null);
-        navigation.navigate('ReportIssue');
+        navigation.navigate('ReportIssue', {
+            ipoName: ipoName,
+            userName: item.name,
+            panNumber: item.panNumber,
+            allotmentStatus: item.status
+        });
     };
 
     const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => {
@@ -202,23 +207,26 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                         top: 30,
                                         right: 0,
                                         backgroundColor: colors.card,
-                                        borderRadius: 8,
-                                        padding: 8,
+                                        borderRadius: 12,
+                                        padding: 4,
                                         borderWidth: 1,
                                         borderColor: colors.border,
-                                        minWidth: 120,
+                                        minWidth: 160,
                                         shadowColor: "#000",
-                                        shadowOffset: { width: 0, height: 2 },
-                                        shadowOpacity: 0.1,
-                                        shadowRadius: 4,
-                                        elevation: 5,
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.15,
+                                        shadowRadius: 8,
+                                        elevation: 8,
                                         zIndex: 1000
                                     }}>
                                         <TouchableOpacity
-                                            onPress={handleReportPress}
-                                            style={{ flexDirection: 'row', alignItems: 'center', padding: 8 }}
+                                            onPress={() => handleReportPress(item)}
+                                            style={{ padding: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border + '33' }}
                                         >
-                                            <Text style={{ color: colors.text, fontSize: 14 }}>Report Issue</Text>
+                                            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Report Status Issue</Text>
+                                            <Text style={{ color: colors.text, fontSize: 9, opacity: 0.5, marginTop: 4 }}>
+                                                Contact us if allotted but facing issues
+                                            </Text>
                                         </TouchableOpacity>
                                     </View>
                                 )}

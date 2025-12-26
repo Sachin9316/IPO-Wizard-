@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { IPOData } from '../types/ipo';
-import { TrendingUp, Users, Calendar, CircleDollarSign } from 'lucide-react-native';
+import { TrendingUp, Users, Calendar, CircleDollarSign, Info } from 'lucide-react-native';
 
 interface IPOCardProps {
     item: IPOData;
@@ -60,16 +60,26 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
 
                         {/* GMP / Allotment on Top Right */}
                         <View style={{ alignItems: 'flex-end' }}>
-                            {item.status === 'Closed' && item.isAllotmentOut ? (
-                                <View style={[styles.allotmentBadge, { backgroundColor: '#E3F2FD', marginBottom: 4 }]}>
-                                    <Text style={[styles.allotmentText, { color: '#2196F3' }]}>ALLOTMENT OUT</Text>
-                                </View>
-                            ) : (
-                                <View style={{ alignItems: 'flex-end' }}>
-                                    <Text style={[styles.gmpLabel, { color: colors.text, marginBottom: 0 }]}>GMP</Text>
-                                    <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
+                            {item.status === 'Closed' && (
+                                <View style={[
+                                    styles.allotmentBadge,
+                                    { backgroundColor: item.isAllotmentOut ? '#E3F2FD' : '#FFF3E0', marginBottom: 4 }
+                                ]}>
+                                    <Text style={[
+                                        styles.allotmentText,
+                                        { color: item.isAllotmentOut ? '#2196F3' : '#FF9800' }
+                                    ]}>
+                                        {item.isAllotmentOut ? 'ALLOTMENT OUT' : 'ALLOTMENT AWAITED'}
+                                    </Text>
                                 </View>
                             )}
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                    <Text style={[styles.gmpLabel, { color: colors.text, marginRight: 4 }]}>GMP</Text>
+                                    <Info size={12} color={colors.text} opacity={0.5} />
+                                </View>
+                                <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -101,6 +111,12 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
                         <Text style={[styles.statValue, { color: colors.text }]}>{item.lotSize}</Text>
                     </View>
                 </View>
+            </View>
+
+            <View style={[styles.disclaimerContainer, { borderTopColor: colors.border }]}>
+                <Text style={[styles.disclaimerText, { color: colors.text }]}>
+                    * GMP is based on market rumors and trends. It is for informational purposes only and does not guarantee the actual listing price.
+                </Text>
             </View>
         </TouchableOpacity>
     );
@@ -209,12 +225,23 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     gmpLabel: {
-        fontSize: 9,
+        fontSize: 12,
         opacity: 0.6,
-        fontWeight: '600',
+        fontWeight: '700',
     },
     gmpValue: {
         fontSize: 16,
         fontWeight: '700',
+    },
+    disclaimerContainer: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderTopWidth: 0.5,
+        opacity: 0.6,
+    },
+    disclaimerText: {
+        fontSize: 8,
+        fontStyle: 'italic',
+        textAlign: 'center',
     }
 });
