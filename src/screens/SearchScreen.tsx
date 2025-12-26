@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { Search, X, ArrowLeft, TrendingUp } from 'lucide-react-native';
 import { api } from '../services/api';
+import { SkeletonIPOCard } from '../components/SkeletonIPOCard';
 
 import { mapBackendToFrontend } from '../utils/mapper';
 import { IPOData } from '../types/ipo';
@@ -98,8 +99,10 @@ export const SearchScreen = ({ navigation }: any) => {
             </View>
 
             {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color={colors.primary} />
+                <View style={{ flex: 1, padding: 16 }}>
+                    <SkeletonIPOCard />
+                    <SkeletonIPOCard />
+                    <SkeletonIPOCard />
                 </View>
             ) : (
                 <FlatList

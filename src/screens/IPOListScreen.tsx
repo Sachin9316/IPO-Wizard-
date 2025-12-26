@@ -4,6 +4,7 @@ import { Filter, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { IPOData } from '../types/ipo';
 import { IPOCard } from '../components/IPOCard';
+import { SkeletonIPOCard } from '../components/SkeletonIPOCard';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { fetchMainboardIPOs, fetchSMEIPOs, fetchListedIPOs, fetchWatchlist } from '../services/api';
 import { mapBackendToFrontend } from '../utils/mapper';
@@ -296,8 +297,11 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
             {headerContent}
 
             {loading && !refreshing && page === 1 && fetchStage === 0 ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                    <ActivityIndicator size="large" color={colors.primary} />
+                <View style={{ flex: 1, padding: 16 }}>
+                    <SkeletonIPOCard />
+                    <SkeletonIPOCard />
+                    <SkeletonIPOCard />
+                    <SkeletonIPOCard />
                 </View>
             ) : (
                 <FlatList
