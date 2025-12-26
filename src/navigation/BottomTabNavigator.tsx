@@ -5,8 +5,9 @@ import { IPOListScreen } from '../screens/IPOListScreen';
 import { PANsNavigator } from './PANsNavigator';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { CustomHeader } from '../components/CustomHeader';
-import { Home, PieChart, User, CreditCard } from 'lucide-react-native';
+import { Home, PieChart, User, CreditCard, Newspaper } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { InsightsScreen } from '../screens/InsightsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -55,6 +56,15 @@ export const BottomTabNavigator = () => {
                     tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
                     headerShown: true,
                     header: () => <CustomHeader title="PAN's" />
+                }}
+            />
+            <Tab.Screen
+                name="Insights"
+                component={InsightsScreen}
+                options={{
+                    tabBarLabel: 'Insights',
+                    tabBarIcon: ({ color, size }) => <Newspaper color={color} size={size} />,
+                    headerShown: false,
                 }}
             />
             <Tab.Screen
