@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { User, Mail, LogOut, Loader, CheckCircle, ShieldCheck, FileText } from 'lucide-react-native';
+import { User, Mail, LogOut, Loader, CheckCircle, ShieldCheck, FileText, Moon, Sun } from 'lucide-react-native';
+import { Switch } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 
 export const ProfileScreen = () => {
-    const { colors } = useTheme();
+    const { colors, theme, toggleTheme } = useTheme();
     const navigation = useNavigation<any>();
     const { user, isAuthenticated, startLogin, pollLoginStatus, logout } = useAuth();
 
@@ -161,6 +162,23 @@ export const ProfileScreen = () => {
                     </View>
                 </View>
 
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Preferences</Text>
+
+                <View style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'space-between' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                        {theme === 'dark' ? <Moon size={20} color={colors.primary} /> : <Sun size={20} color={colors.primary} />}
+                        <Text style={[styles.menuButtonText, { color: colors.text }]}>Dark Mode</Text>
+                    </View>
+                    <Switch
+                        value={theme === 'dark'}
+                        onValueChange={toggleTheme}
+                        trackColor={{ false: colors.border, true: colors.primary + '80' }}
+                        thumbColor={theme === 'dark' ? colors.primary : '#f4f3f4'}
+                    />
+                </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.text, marginTop: 8 }]}>Support & Legal</Text>
+
                 <TouchableOpacity
                     style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border }]}
                     onPress={() => navigation.navigate('PrivacyPolicy')}
@@ -191,7 +209,7 @@ export const ProfileScreen = () => {
                     </Text>
                 </View>
             </ScrollView>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 
@@ -231,6 +249,7 @@ const styles = StyleSheet.create({
     logoutText: { fontSize: 16, fontWeight: '600' },
     menuButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, gap: 16, marginBottom: 16 },
     menuButtonText: { fontSize: 16, fontWeight: '500' },
+    sectionTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 16, marginTop: 8, opacity: 0.8 },
     infoBanner: { borderRadius: 12, padding: 16, alignItems: 'center' },
     infoText: { fontSize: 14, fontWeight: '500' },
     footerLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 40, opacity: 0.6 },
