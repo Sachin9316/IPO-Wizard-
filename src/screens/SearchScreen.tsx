@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Search, X, ArrowLeft, TrendingUp } from 'lucide-react-native';
 import { api } from '../services/api';
 import { SkeletonIPOCard } from '../components/SkeletonIPOCard';
+import { EmptyState } from '../components/EmptyState';
 
 import { mapBackendToFrontend } from '../utils/mapper';
 import { IPOData } from '../types/ipo';
@@ -112,14 +113,19 @@ export const SearchScreen = ({ navigation }: any) => {
                     contentContainerStyle={{ padding: 16 }}
                     ListEmptyComponent={
                         query.length > 1 ? (
-                            <View style={styles.center}>
-                                <Text style={{ color: colors.text, opacity: 0.6 }}>No results found</Text>
-                            </View>
+                            <EmptyState
+                                icon={Search}
+                                title="No Results Found"
+                                description={`We couldn't find any IPOs matching "${query}". Try a different term or check your spelling.`}
+                                buttonText="Clear Search"
+                                onButtonPress={() => handleSearch('')}
+                            />
                         ) : (
-                            <View style={{ marginTop: 40, alignItems: 'center', opacity: 0.5 }}>
-                                <TrendingUp size={48} color={colors.text} />
-                                <Text style={{ color: colors.text, marginTop: 16 }}>Search for companies or symbols</Text>
-                            </View>
+                            <EmptyState
+                                icon={TrendingUp}
+                                title="Start Searching"
+                                description="Find your favorite IPOs by company name or symbol."
+                            />
                         )
                     }
                 />

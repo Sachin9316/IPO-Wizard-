@@ -1,10 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator, TextInput, TouchableOpacity } from 'react-native';
-import { Filter, X } from 'lucide-react-native';
+import { Filter, X, ClipboardList, LogIn, Search } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { IPOData } from '../types/ipo';
 import { IPOCard } from '../components/IPOCard';
 import { SkeletonIPOCard } from '../components/SkeletonIPOCard';
+import { EmptyState } from '../components/EmptyState';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { fetchMainboardIPOs, fetchSMEIPOs, fetchListedIPOs, fetchWatchlist } from '../services/api';
 import { mapBackendToFrontend } from '../utils/mapper';
@@ -310,13 +311,25 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                     keyExtractor={(item, index) => `${item.id}-${index}`}
                     contentContainerStyle={[styles.listContent, type === 'Alloted' && { paddingTop: 8 }]}
                     ListEmptyComponent={
-                        <View style={{ padding: 20, alignItems: 'center' }}>
-                            <Text style={{ color: colors.text, textAlign: 'center', marginTop: 20 }}>
-                                {type === 'Watchlist' && !isAuthenticated
-                                    ? "Please login to view your watchlist."
-                                    : "No IPOs found."}
-                            </Text>
-                        </View>
+                        type === 'Watchlist' && !isAuthenticated ? (
+                            <EmptyState
+                                icon={LogIn}
+                                title="Login Required"
+                                description="Sign in to save IPOs to your watchlist and track them easily."
+                                buttonText="Login / Register"
+                                onButtonPress={() => navigation.navigate('Profile')}
+                            />
+                        ) : (
+                            <EmptyState
+                                icon={type === 'Alloted' ? Search : ClipboardList}
+                                title={type === 'Alloted' ? "No Allotment Results" : "No IPOs Found"}
+                                description={type === 'Alloted'
+                                    ? "We couldn't find any allotment results matching your search or filters."
+                                    : "There are currently no IPOs listed in this category. Check back later!"}
+                                buttonText={type === 'Alloted' ? "Clear Search" : undefined}
+                                onButtonPress={type === 'Alloted' ? () => setSearchQuery('') : undefined}
+                            />
+                        )
                     }
                     refreshing={refreshing}
                     onRefresh={onRefresh}
