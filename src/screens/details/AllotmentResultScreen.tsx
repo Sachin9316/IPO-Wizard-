@@ -140,6 +140,27 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         });
     };
 
+    const handleShare = async (item: AllotmentResult) => {
+        setActiveMenuPan(null);
+        let message = '';
+        if (item.status === 'ALLOTTED') {
+            message = `🎉 Excited to share that I've been allotted shares in the ${ipoName} IPO! \n\nCheck your allotment status now on IPO Wizard app! 🚀`;
+        } else if (item.status === 'NOT_ALLOTTED') {
+            message = `Hard luck! No luck in ${ipoName} IPO allotment this time. \n\nBetter luck next time! Checking live status on IPO Wizard. 📊`;
+        } else {
+            message = `Checking ${ipoName} IPO allotment status on IPO Wizard app. \n\nStay updated with live GMP and subscriptions! 📈`;
+        }
+
+        try {
+            await Share.share({
+                message,
+                title: 'IPO Allotment Status'
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
     const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => {
         let statusColor, statusText;
 
@@ -211,7 +232,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                         padding: 4,
                                         borderWidth: 1,
                                         borderColor: colors.border,
-                                        minWidth: 160,
+                                        minWidth: 180,
                                         shadowColor: "#000",
                                         shadowOffset: { width: 0, height: 4 },
                                         shadowOpacity: 0.15,
@@ -220,8 +241,15 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                         zIndex: 1000
                                     }}>
                                         <TouchableOpacity
+                                            onPress={() => handleShare(item)}
+                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border + '33' }}
+                                        >
+                                            <Share2 size={16} color={colors.primary} />
+                                            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Share Result</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
                                             onPress={() => handleReportPress(item)}
-                                            style={{ padding: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border + '33' }}
+                                            style={{ padding: 12 }}
                                         >
                                             <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Report Status Issue</Text>
                                             <Text style={{ color: colors.text, fontSize: 9, opacity: 0.5, marginTop: 4 }}>
