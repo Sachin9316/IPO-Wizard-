@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { IPOData } from '../types/ipo';
 import { TrendingUp, Users, Calendar, CircleDollarSign, Info } from 'lucide-react-native';
@@ -13,7 +13,24 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
     const { colors } = useTheme();
     const [imageError, setImageError] = React.useState(false);
 
+    // Animation refs
+    const fadeAnim = React.useRef(new Animated.Value(0)).current;
+    const slideAnim = React.useRef(new Animated.Value(20)).current;
+
     React.useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 500,
+                useNativeDriver: true,
+            }),
+            Animated.timing(slideAnim, {
+                toValue: 0,
+                duration: 500,
+                useNativeDriver: true,
+            })
+        ]).start();
+
         setImageError(false);
     }, [item.logoUrl]);
 
@@ -27,98 +44,104 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
     };
 
     return (
-        <TouchableOpacity
-            style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={() => onPress(item)}
-            activeOpacity={0.9}
-        >
-            <View style={styles.header}>
-                <View style={[styles.logoContainer, { width: 44, height: 44 }]}>
-                    <View style={[styles.logoplaceholder, { backgroundColor: colors.border, position: 'absolute', width: '100%', height: '100%' }]}>
-                        <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>LOGO</Text>
-                    </View>
-                    {item.logoUrl && !imageError && (
-                        <Image
-                            source={{ uri: item.logoUrl }}
-                            style={{ width: '100%', height: '100%', borderRadius: 8 }}
-                            resizeMode="contain"
-                            onError={() => setImageError(true)}
-                        />
-                    )}
-                </View>
-
-                <View style={styles.headerContent}>
-                    <View style={styles.titleRow}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                            <View style={styles.subtitleRow}>
-                                <Text style={[styles.typeBadge, { color: colors.primary, borderColor: colors.primary }]}>{item.type}</Text>
-                                <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
-                                <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
-                            </View>
+        <Animated.View style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: slideAnim }]
+        }}>
+            <TouchableOpacity
+                style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+                onPress={() => onPress(item)}
+                activeOpacity={0.9}
+            >
+                {/* ... rest of the card content ... */}
+                <View style={styles.header}>
+                    <View style={[styles.logoContainer, { width: 44, height: 44 }]}>
+                        <View style={[styles.logoplaceholder, { backgroundColor: colors.border, position: 'absolute', width: '100%', height: '100%' }]}>
+                            <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>LOGO</Text>
                         </View>
+                        {item.logoUrl && !imageError && (
+                            <Image
+                                source={{ uri: item.logoUrl }}
+                                style={{ width: '100%', height: '100%', borderRadius: 8 }}
+                                resizeMode="contain"
+                                onError={() => setImageError(true)}
+                            />
+                        )}
+                    </View>
 
-                        {/* GMP / Allotment on Top Right */}
-                        <View style={{ alignItems: 'flex-end' }}>
-                            {item.status === 'Closed' && (
-                                <View style={[
-                                    styles.allotmentBadge,
-                                    { backgroundColor: item.isAllotmentOut ? '#E3F2FD' : '#FFF3E0', marginBottom: 4 }
-                                ]}>
-                                    <Text style={[
-                                        styles.allotmentText,
-                                        { color: item.isAllotmentOut ? '#2196F3' : '#FF9800' }
-                                    ]}>
-                                        {item.isAllotmentOut ? 'ALLOTMENT OUT' : 'ALLOTMENT AWAITED'}
-                                    </Text>
+                    <View style={styles.headerContent}>
+                        <View style={styles.titleRow}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
+                                <View style={styles.subtitleRow}>
+                                    <Text style={[styles.typeBadge, { color: colors.primary, borderColor: colors.primary }]}>{item.type}</Text>
+                                    <View style={[styles.statusDot, { backgroundColor: getStatusColor(item.status) }]} />
+                                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
                                 </View>
-                            )}
+                            </View>
+
+                            {/* GMP / Allotment on Top Right */}
                             <View style={{ alignItems: 'flex-end' }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-                                    <Text style={[styles.gmpLabel, { color: colors.text, marginRight: 4 }]}>GMP</Text>
-                                    <Info size={12} color={colors.text} opacity={0.5} />
+                                {item.status === 'Closed' && (
+                                    <View style={[
+                                        styles.allotmentBadge,
+                                        { backgroundColor: item.isAllotmentOut ? '#E3F2FD' : '#FFF3E0', marginBottom: 4 }
+                                    ]}>
+                                        <Text style={[
+                                            styles.allotmentText,
+                                            { color: item.isAllotmentOut ? '#2196F3' : '#FF9800' }
+                                        ]}>
+                                            {item.isAllotmentOut ? 'ALLOTMENT OUT' : 'ALLOTMENT AWAITED'}
+                                        </Text>
+                                    </View>
+                                )}
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
+                                        <Text style={[styles.gmpLabel, { color: colors.text, marginRight: 4 }]}>GMP</Text>
+                                        <Info size={12} color={colors.text} opacity={0.5} />
+                                    </View>
+                                    <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
                                 </View>
-                                <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
                             </View>
                         </View>
                     </View>
                 </View>
-            </View>
 
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-            <View style={styles.statsContainer}>
-                {/* Single Row: Dates | Price | Lot */}
-                <View style={styles.statRow}>
-                    <View style={styles.statItem}>
-                        <Text style={[styles.statLabel, { color: colors.text }]}>OFFER DATES</Text>
-                        <Text style={[styles.statValue, { color: colors.text }]}>{item.dates.offerStart}-{item.dates.offerEnd}</Text>
-                    </View>
+                <View style={styles.statsContainer}>
+                    {/* Single Row: Dates | Price | Lot */}
+                    <View style={styles.statRow}>
+                        <View style={styles.statItem}>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>OFFER DATES</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{item.dates.offerStart}-{item.dates.offerEnd}</Text>
+                        </View>
 
-                    {/* Vertical Divider */}
-                    <View style={{ width: 1, height: '80%', backgroundColor: colors.border, marginHorizontal: 8 }} />
+                        {/* Vertical Divider */}
+                        <View style={{ width: 1, height: '80%', backgroundColor: colors.border, marginHorizontal: 8 }} />
 
-                    <View style={[styles.statItem, { alignItems: 'center' }]}>
-                        <Text style={[styles.statLabel, { color: colors.text }]}>PRICE RANGE</Text>
-                        <Text style={[styles.statValue, { color: colors.text }]}>{item.priceRange}</Text>
-                    </View>
+                        <View style={[styles.statItem, { alignItems: 'center' }]}>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>PRICE RANGE</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{item.priceRange}</Text>
+                        </View>
 
-                    {/* Vertical Divider */}
-                    <View style={{ width: 1, height: '80%', backgroundColor: colors.border, marginHorizontal: 8 }} />
+                        {/* Vertical Divider */}
+                        <View style={{ width: 1, height: '80%', backgroundColor: colors.border, marginHorizontal: 8 }} />
 
-                    <View style={[styles.statItem, { alignItems: 'flex-end' }]}>
-                        <Text style={[styles.statLabel, { color: colors.text }]}>LOT SIZE</Text>
-                        <Text style={[styles.statValue, { color: colors.text }]}>{item.lotSize}</Text>
+                        <View style={[styles.statItem, { alignItems: 'flex-end' }]}>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>LOT SIZE</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{item.lotSize}</Text>
+                        </View>
                     </View>
                 </View>
-            </View>
 
-            <View style={[styles.disclaimerContainer, { borderTopColor: colors.border }]}>
-                <Text style={[styles.disclaimerText, { color: colors.text }]}>
-                    * GMP is based on market rumors and trends. It is for informational purposes only and does not guarantee the actual listing price.
-                </Text>
-            </View>
-        </TouchableOpacity>
+                <View style={[styles.disclaimerContainer, { borderTopColor: colors.border }]}>
+                    <Text style={[styles.disclaimerText, { color: colors.text }]}>
+                        * GMP is based on market rumors and trends. It is for informational purposes only and does not guarantee the actual listing price.
+                    </Text>
+                </View>
+            </TouchableOpacity>
+        </Animated.View>
     );
 };
 
