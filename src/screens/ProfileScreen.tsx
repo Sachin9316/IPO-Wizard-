@@ -6,11 +6,13 @@ import { User, Mail, LogOut, Loader, CheckCircle, ShieldCheck, FileText, Moon, S
 import { Switch } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
+import { useUI } from '../context/UIContext';
 
 export const ProfileScreen = () => {
     const { colors, theme, toggleTheme } = useTheme();
     const navigation = useNavigation<any>();
     const { user, isAuthenticated, startLogin, pollLoginStatus, logout } = useAuth();
+    const { showAlert, showToast } = useUI();
 
     // Auth State
     const [email, setEmail] = useState('');
@@ -39,7 +41,11 @@ export const ProfileScreen = () => {
 
     const handleLogin = async () => {
         if (!email.includes('@')) {
-            Alert.alert("Invalid Email", "Please enter a valid email address.");
+            showAlert({
+                title: "Invalid Email",
+                message: "Please enter a valid email address.",
+                type: 'warning'
+            });
             return;
         }
         setLoginLoading(true);
@@ -49,7 +55,11 @@ export const ProfileScreen = () => {
             setVerificationStep(true);
             setLoginLoading(false);
         } catch (error: any) {
-            Alert.alert("Error", error.message);
+            showAlert({
+                title: "Login Error",
+                message: error.message,
+                type: 'error'
+            });
             setLoginLoading(false);
         }
     };
@@ -197,7 +207,21 @@ export const ProfileScreen = () => {
 
                 <TouchableOpacity
                     style={[styles.logoutButton, { borderColor: '#F44336' }]}
-                    onPress={logout}
+                    onPress={() => {
+                        showAlert({
+                            title: "Logout",
+                            message: "Are you sure you want to logout? Your local PANs will remain on this device.",
+                            type: 'warning',
+                            buttons: [
+                                { text: "Cancel", style: "cancel" },
+                                {
+                                    text: "Logout",
+                                    style: "destructive",
+                                    onPress: logout
+                                }
+                            ]
+                        });
+                    }}
                 >
                     <LogOut size={20} color="#F44336" />
                     <Text style={[styles.logoutText, { color: '#F44336' }]}>Logout</Text>

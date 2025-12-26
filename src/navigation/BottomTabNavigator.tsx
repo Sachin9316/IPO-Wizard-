@@ -58,7 +58,7 @@ export const BottomTabNavigator = () => {
                     header: () => <CustomHeader title="PAN's" />
                 }}
             />
-            <Tab.Screen
+            {/* <Tab.Screen
                 name="Insights"
                 component={InsightsScreen}
                 options={{
@@ -66,7 +66,7 @@ export const BottomTabNavigator = () => {
                     tabBarIcon: ({ color, size }) => <Newspaper color={color} size={size} />,
                     headerShown: false,
                 }}
-            />
+            /> */}
             <Tab.Screen
                 name="Profile"
                 component={ProfileScreen}

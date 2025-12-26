@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { AddPANModal } from '../../components/AddPANModal';
@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addUserPAN, deleteUserPAN } from '../../services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useUI } from '../../context/UIContext';
 
 interface PANData {
     id: string; // For local: timestamp. For cloud: _id or panNumber? API uses panNumber for delete.
@@ -18,6 +19,7 @@ interface PANData {
 export const SavedPANsScreen = () => {
     const { colors } = useTheme();
     const { user, isAuthenticated, token, refreshProfile } = useAuth();
+    const { showAlert, showToast } = useUI();
     const navigation = useNavigation<any>();
 
     const [modalVisible, setModalVisible] = useState(false);
@@ -70,10 +72,17 @@ export const SavedPANsScreen = () => {
             setLocalPans(updated);
             await AsyncStorage.setItem('unsaved_pans', JSON.stringify(updated));
 
-            Alert.alert("Synced", `PAN ${pan.panNumber} synced to cloud.`);
+            showToast({
+                message: `PAN ${pan.panNumber} synced to cloud.`,
+                type: 'success'
+            });
             if (refreshProfile) refreshProfile(); // Refresh profile after sync
         } catch (e: any) {
-            Alert.alert("Sync Error", e.message);
+            showAlert({
+                title: "Sync Error",
+                message: e.message,
+                type: 'error'
+            });
         } finally {
             setIsLoading(false);
         }
@@ -88,11 +97,11 @@ export const SavedPANsScreen = () => {
             setIsLoading(true);
             try {
                 await addUserPAN(token, { panNumber, name });
-                Alert.alert("Success", "PAN added to your account");
+                showToast({ message: "PAN added to your account", type: 'success' });
                 setModalVisible(false);
                 if (refreshProfile) refreshProfile(); // Refresh after add
             } catch (e: any) {
-                Alert.alert("Error", e.message);
+                showAlert({ title: "Error", message: e.message, type: 'error' });
             } finally {
                 setIsLoading(false);
             }
@@ -106,7 +115,7 @@ export const SavedPANsScreen = () => {
             } else {
                 // Check dupes
                 if (localPans.some(p => p.panNumber === panNumber)) {
-                    Alert.alert("Duplicate", "PAN already exists locally.");
+                    showAlert({ title: "Duplicate", message: "PAN already exists locally.", type: 'warning' });
                     return;
                 }
                 const newPan = { id: Date.now().toString(), panNumber, name };
@@ -120,7 +129,7 @@ export const SavedPANsScreen = () => {
 
     const handleEditPAN = (pan: PANData) => {
         if (isAuthenticated) {
-            Alert.alert("Info", "To edit a verified PAN, please remove and add it again.");
+            showAlert({ title: "Info", message: "To edit a verified PAN, please remove and add it again.", type: 'info' });
         } else {
             setEditingPAN(pan);
             setModalVisible(true);
@@ -129,25 +138,30 @@ export const SavedPANsScreen = () => {
 
     const handleDeletePAN = async (id: string, panNumber: string, isCloud: boolean) => {
         if (isCloud && isAuthenticated && token) {
-            Alert.alert("Delete PAN", "Remove from cloud account?", [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        setIsLoading(true);
-                        try {
-                            await deleteUserPAN(token, panNumber);
-                            Alert.alert("Success", "PAN deleted");
-                            if (refreshProfile) refreshProfile(); // Refresh after delete
-                        } catch (e: any) {
-                            Alert.alert("Error", e.message);
-                        } finally {
-                            setIsLoading(false);
+            showAlert({
+                title: "Delete PAN",
+                message: "Remove from cloud account?",
+                type: 'warning',
+                buttons: [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: async () => {
+                            setIsLoading(true);
+                            try {
+                                await deleteUserPAN(token, panNumber);
+                                showToast({ message: "PAN deleted successfully", type: 'info' });
+                                if (refreshProfile) refreshProfile(); // Refresh after delete
+                            } catch (e: any) {
+                                showAlert({ title: "Error", message: e.message, type: 'error' });
+                            } finally {
+                                setIsLoading(false);
+                            }
                         }
                     }
-                }
-            ]);
+                ]
+            });
         } else {
             // Local delete
             const updated = localPans.filter(p => p.id !== id);
@@ -232,11 +246,10 @@ export const SavedPANsScreen = () => {
             {isLoading && <ActivityIndicator size="small" color={colors.primary} style={{ margin: 10 }} />}
 
             <FlatList
-                data={[]} // Dummy data since we render sections manually or use SectionList? 
-                // Creating a combined list with headers is complex with two arrays.
-                // Let's us ScrollView with two map loops for simplicity given low item count.
+                data={[]}
+                contentContainerStyle={{ flexGrow: 1 }}
                 ListHeaderComponent={
-                    <View style={{ padding: 16 }}>
+                    <View style={{ padding: 16, flex: 1, justifyContent: (isAuthenticated && (cloudPans.length > 0 || unsavedPans.length > 0)) || (!isAuthenticated && unsavedPans.length > 0) ? 'flex-start' : 'center' }}>
                         {isAuthenticated && cloudPans.length > 0 && (
                             <View style={{ marginBottom: 20 }}>
                                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Synced PANs ({cloudPans.length})</Text>
@@ -264,9 +277,11 @@ export const SavedPANsScreen = () => {
                             </View>
                         )}
                         {!isAuthenticated && unsavedPans.length === 0 && (
-                            <View style={styles.emptyContainer}>
-                                <CreditCard size={64} color={colors.text} style={{ opacity: 0.3 }} />
-                                <Text style={[styles.emptyText, { color: colors.text, opacity: 0.5 }]}>No local PANs</Text>
+                            <View style={[styles.emptyContainer, { flex: 1, marginTop: 100 }]}>
+                                <CreditCard size={64} color={colors.text} style={{ opacity: 0.2 }} />
+                                <Text style={[styles.emptyText, { color: colors.text, opacity: 0.6, textAlign: 'center' }]}>
+                                    Save multiple PANs and check the allotment in one click
+                                </Text>
                             </View>
                         )}
                     </View>

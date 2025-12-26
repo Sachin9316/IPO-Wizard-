@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { Search, X, ArrowLeft, TrendingUp } from 'lucide-react-native';
+import { Search, ArrowLeft, X, TrendingUp, Clock, Trash2, ChevronRight, Bookmark } from 'lucide-react-native';
 import { api } from '../services/api';
 import { SkeletonIPOCard } from '../components/SkeletonIPOCard';
 import { EmptyState } from '../components/EmptyState';
@@ -78,7 +78,7 @@ export const SearchScreen = ({ navigation }: any) => {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 8 }}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 4 }}>
                     <ArrowLeft color={colors.text} size={24} />
                 </TouchableOpacity>
                 <View style={[styles.searchBox, { backgroundColor: colors.card }]}>
@@ -130,7 +130,7 @@ export const SearchScreen = ({ navigation }: any) => {
                     }
                 />
             )}
-        </SafeAreaView>
+        </SafeAreaView >
     );
 };
 

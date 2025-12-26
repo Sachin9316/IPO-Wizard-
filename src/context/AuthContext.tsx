@@ -65,7 +65,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             return false;
         } catch (e) {
-            console.error("Poll failed", e);
+            // Use warn instead of error to avoid LogBox in development if polling fails temporarily
+            console.warn("Polling magic link status...");
             return false;
         }
     };
@@ -82,15 +83,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const pans = JSON.parse(unsaved);
                 for (const p of pans) {
                     try {
-                        await addUserPAN(authToken, { panNumber: p.panNumber, name: p.name });
+                        await addUserPAN(authToken, { panNumber: p.panNumber, name: p.name || '' });
                     } catch (err) { /* ignore dupes */ }
                 }
                 await AsyncStorage.removeItem('unsaved_pans');
-                // Refresh profile
-                const profile = await fetchUserProfile(authToken);
-                setUser(profile);
+                // Refresh profile to get the newly synced PANs
+                await refreshProfile();
             }
-        } catch (e) { }
+        } catch (e) {
+            console.error("Auto-sync failed:", e);
+        }
     };
 
     const logout = async () => {

@@ -199,10 +199,14 @@ export const checkMagicLoginStatus = async (loginId: string) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ loginId }),
     });
-    // If pending, returns { status: 'pending' }
-    // If verified, returns { status: 'verified', token, user }
+
     if (!response.ok) {
-        throw new Error('Status check failed');
+        let errorMsg = 'Status check failed';
+        try {
+            const errData = await response.json();
+            errorMsg = errData.message || errorMsg;
+        } catch (e) { /* ignore parse error */ }
+        throw new Error(errorMsg);
     }
     return response.json();
 };

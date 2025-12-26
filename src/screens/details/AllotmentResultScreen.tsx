@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Easing, Share, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { X, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy, MoreVertical } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy, MoreVertical } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 
@@ -272,7 +272,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-                    <X color={colors.text} size={24} />
+                    <ArrowLeft color={colors.text} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Allotment Status</Text>
                 <View style={{ width: 24 }} />
@@ -305,7 +305,12 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                         <Trophy size={20} color={colors.primary} />
                                     )}
                                 </View>
-                                <Text style={[styles.companyTitle, { color: colors.text, marginBottom: 0, marginLeft: 12 }]}>{ipoName}</Text>
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                    <Text style={[styles.companyTitle, { color: colors.text, marginBottom: 0 }]}>{ipoName}</Text>
+                                    <Text style={{ fontSize: 13, color: colors.text, opacity: 0.6 }}>
+                                        {ipo?.symbol} • {ipo?.type}
+                                    </Text>
+                                </View>
                             </View>
 
                             <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>

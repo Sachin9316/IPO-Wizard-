@@ -46,11 +46,7 @@ export const AddPANModal = ({ visible, onClose, onSubmit, requireName = true, ed
             hasError = true;
         }
 
-        if (requireName && !name.trim()) {
-            newErrors.name = 'Name is required';
-            hasError = true;
-        }
-
+        // Name is now optional
         setErrors(newErrors);
 
         if (!hasError) {
@@ -119,7 +115,7 @@ export const AddPANModal = ({ visible, onClose, onSubmit, requireName = true, ed
 
                         {requireName && (
                             <View style={styles.inputGroup}>
-                                <Text style={[styles.label, { color: colors.text }]}>Name *</Text>
+                                <Text style={[styles.label, { color: colors.text }]}>Full Name as on PAN (Optional)</Text>
                                 <TextInput
                                     style={[
                                         styles.input,
@@ -129,7 +125,7 @@ export const AddPANModal = ({ visible, onClose, onSubmit, requireName = true, ed
                                             borderColor: errors.name ? '#F44336' : colors.border
                                         }
                                     ]}
-                                    placeholder="Enter full name"
+                                    placeholder="Enter name (optional)"
                                     placeholderTextColor={colors.text + '60'}
                                     value={name}
                                     onChangeText={(text) => {

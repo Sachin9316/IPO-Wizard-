@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUI } from '../../context/UIContext';
 
 export const LoginScreen = ({ navigation }: any) => {
     const { colors } = useTheme();
     const { login, isLoading } = useAuth();
+    const { showAlert } = useUI();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
     const handleLogin = async () => {
         if (!email || !password) {
-            Alert.alert('Error', 'Please fill all fields');
+            showAlert({ title: 'Error', message: 'Please fill all fields', type: 'warning' });
             return;
         }
         try {
@@ -20,7 +22,7 @@ export const LoginScreen = ({ navigation }: any) => {
             // Navigation is handled by RootNavigator usually (isAuthenticated switch),
             // or we can go back if pushed.
         } catch (error: any) {
-            Alert.alert('Login Failed', error.message);
+            showAlert({ title: 'Login Failed', message: error.message, type: 'error' });
         }
     };
 

@@ -3,26 +3,33 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator,
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUI } from '../../context/UIContext';
 
 export const RegisterScreen = ({ navigation }: any) => {
     const { colors } = useTheme();
     const { register, isLoading } = useAuth();
+    const { showAlert, showToast } = useUI();
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
     const handleRegister = async () => {
         if (!name || !email || !password) {
-            Alert.alert('Error', 'Please fill all fields');
+            showAlert({ title: 'Error', message: 'Please fill all fields', type: 'warning' });
             return;
         }
         try {
             await register(name, email, password);
-            Alert.alert('Success', 'Registration successful. Please check your email to verify your account.', [
-                { text: 'OK', onPress: () => navigation.navigate('Login') }
-            ]);
+            showAlert({
+                title: 'Success',
+                message: 'Registration successful. Please check your email to verify your account.',
+                type: 'success',
+                buttons: [
+                    { text: 'OK', onPress: () => navigation.navigate('Login') }
+                ]
+            });
         } catch (error: any) {
-            Alert.alert('Registration Failed', error.message);
+            showAlert({ title: 'Registration Failed', message: error.message, type: 'error' });
         }
     };
 

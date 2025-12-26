@@ -2,21 +2,23 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { X, TrendingUp, Calendar } from 'lucide-react-native';
+import { ArrowLeft, TrendingUp, Calendar } from 'lucide-react-native';
 import { LineChart } from 'react-native-chart-kit';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const GMPScreen = ({ route, navigation }: any) => {
     const { colors } = useTheme();
-    const { gmpDetails, name } = route.params;
+    const { ipo } = route.params;
+    const gmpDetails = ipo?.gmpDetails;
+    const name = ipo?.name;
 
     if (!gmpDetails || gmpDetails.length === 0) {
         return (
             <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
                 <View style={[styles.header, { borderBottomColor: colors.border }]}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-                        <X color={colors.text} size={24} />
+                        <ArrowLeft color={colors.text} size={24} />
                     </TouchableOpacity>
                     <Text style={[styles.headerTitle, { color: colors.text }]}>GMP Trend</Text>
                     <View style={{ width: 24 }} />
@@ -60,7 +62,7 @@ export const GMPScreen = ({ route, navigation }: any) => {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-                    <X color={colors.text} size={24} />
+                    <ArrowLeft color={colors.text} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>GMP Trend</Text>
                 <View style={{ width: 24 }} />
@@ -69,7 +71,9 @@ export const GMPScreen = ({ route, navigation }: any) => {
             <ScrollView contentContainerStyle={styles.content}>
                 <View style={{ marginBottom: 24 }}>
                     <Text style={[styles.companyName, { color: colors.text }]}>{name}</Text>
-                    <Text style={[styles.subtitle, { color: colors.text }]}>Grey Market Premium History</Text>
+                    <Text style={[styles.subtitle, { color: colors.text }]}>
+                        {ipo?.symbol} • {ipo?.type}
+                    </Text>
                 </View>
 
                 {/* Chart Section */}

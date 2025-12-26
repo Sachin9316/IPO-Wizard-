@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { UIProvider } from './src/context/UIContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 
 const AppContent = () => {
@@ -50,9 +51,11 @@ export default function App() {
     return (
         <SafeAreaProvider>
             <ThemeProvider>
-                <AuthProvider>
-                    <AppContent />
-                </AuthProvider>
+                <UIProvider>
+                    <AuthProvider>
+                        <AppContent />
+                    </AuthProvider>
+                </UIProvider>
             </ThemeProvider>
         </SafeAreaProvider>
     );

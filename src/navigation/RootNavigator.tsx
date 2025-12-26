@@ -13,19 +13,22 @@ import { LicensesScreen } from '../screens/LicensesScreen';
 import { ReportIssueScreen } from '../screens/ReportIssueScreen';
 
 import { ComparisonScreen } from '../screens/details/ComparisonScreen';
+import { NewsViewerScreen } from '../screens/NewsViewerScreen';
 
 const Stack = createNativeStackNavigator();
 
 export type RootStackParamList = {
     Root: { screen?: string } | undefined;
     IPODetails: { ipo: IPOData };
-    SubscriptionStatus: { subscriptionDetails: any, name: string };
-    GMPStatus: { gmpDetails: any, name: string };
+    SubscriptionStatus: { ipo: IPOData };
+    GMPStatus: { ipo: IPOData };
     AllotmentResult: { ipo: IPOData };
     Search: undefined;
     PrivacyPolicy: undefined;
     Licenses: undefined;
     ReportIssue: { ipoName: string; userName: string; panNumber: string; allotmentStatus: string };
+    Comparison: { selectedIpos: IPOData[] };
+    NewsViewer: { url: string; title: string };
 };
 export const RootNavigator = () => {
     const { colors } = useTheme();
@@ -92,6 +95,11 @@ export const RootNavigator = () => {
             <Stack.Screen
                 name="Comparison"
                 component={ComparisonScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="NewsViewer"
+                component={NewsViewerScreen}
                 options={{ headerShown: false }}
             />
         </Stack.Navigator>

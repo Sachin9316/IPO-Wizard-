@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { X, TrendingUp, Calendar, CircleDollarSign } from 'lucide-react-native';
+import { ArrowLeft, TrendingUp, Calendar, CircleDollarSign } from 'lucide-react-native';
 import { IPOData } from '../../types/ipo';
 
 export const ComparisonScreen = ({ route, navigation }: any) => {
@@ -27,7 +27,7 @@ export const ComparisonScreen = ({ route, navigation }: any) => {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-                    <X color={colors.text} size={24} />
+                    <ArrowLeft color={colors.text} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Compare IPOs</Text>
                 <View style={{ width: 24 }} />

@@ -1,18 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
-import { X, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart, ArrowLeftRight } from 'lucide-react-native';
+import { ArrowLeft, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart, ArrowLeftRight } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { toggleWatchlist } from '../../services/api';
 import { SkeletonDetail } from '../../components/SkeletonDetail';
 import { IPOSelectionModal } from '../../components/IPOSelectionModal';
+import { useUI } from '../../context/UIContext';
 
 export const IPODetailsScreen = ({ route, navigation }: any) => {
     const { colors } = useTheme();
     const { user, token, refreshProfile, isAuthenticated } = useAuth();
+    const { showAlert } = useUI();
     const item: IPOData = route.params.item;
     const [loading, setLoading] = React.useState(true);
     const [showSelectionModal, setShowSelectionModal] = React.useState(false);
@@ -28,21 +30,22 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
 
     const handleToggleWatchlist = async () => {
         if (!isAuthenticated || !token) {
-            Alert.alert(
-                "Login Required",
-                "Please login to add to watchlist",
-                [
+            showAlert({
+                title: "Login Required",
+                message: "Please login to add to watchlist",
+                type: 'info',
+                buttons: [
                     { text: "Cancel", style: "cancel" },
                     { text: "Login", onPress: () => navigation.navigate("Root", { screen: "Profile" }) }
                 ]
-            );
+            });
             return;
         }
         try {
             await toggleWatchlist(token, ipoId);
             await refreshProfile();
         } catch (error) {
-            Alert.alert("Error", "Failed to update watchlist");
+            showAlert({ title: "Error", message: "Failed to update watchlist", type: 'error' });
         }
     };
 
@@ -50,7 +53,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-                    <X color={colors.text} size={24} />
+                    <ArrowLeft color={colors.text} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{item.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
@@ -107,7 +110,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                     label="RHP PDF"
                                     backgroundColor={colors.card}
                                     borderColor={colors.border}
-                                    onPress={() => Linking.openURL(item.rhpUrl!).catch(err => Alert.alert('Error', 'Could not open link'))}
+                                    onPress={() => Linking.openURL(item.rhpUrl!).catch(err => showAlert({ title: 'Error', message: 'Could not open link', type: 'error' }))}
                                 />
                             )}
                             {item.drhpUrl && (
@@ -116,7 +119,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                     label="DRHP PDF"
                                     backgroundColor={colors.card}
                                     borderColor={colors.border}
-                                    onPress={() => Linking.openURL(item.drhpUrl!).catch(err => Alert.alert('Error', 'Could not open link'))}
+                                    onPress={() => Linking.openURL(item.drhpUrl!).catch(err => showAlert({ title: 'Error', message: 'Could not open link', type: 'error' }))}
                                 />
                             )}
 
@@ -128,9 +131,9 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                 borderColor={colors.border}
                                 onPress={() => {
                                     if (item.subscriptionDetails) {
-                                        navigation.navigate('SubscriptionStatus', { subscriptionDetails: item.subscriptionDetails, name: item.name });
+                                        navigation.navigate('SubscriptionStatus', { ipo: item });
                                     } else {
-                                        Alert.alert('Info', 'Subscription data not available yet');
+                                        showAlert({ title: 'Info', message: 'Subscription data not available yet', type: 'info' });
                                     }
                                 }}
                             />
@@ -143,9 +146,9 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                 borderColor={colors.border}
                                 onPress={() => {
                                     if (item.gmpDetails && item.gmpDetails.length > 0) {
-                                        navigation.navigate('GMPStatus', { gmpDetails: item.gmpDetails, name: item.name });
+                                        navigation.navigate('GMPStatus', { ipo: item });
                                     } else {
-                                        Alert.alert('Info', 'GMP data not available yet');
+                                        showAlert({ title: 'Info', message: 'GMP data not available yet', type: 'info' });
                                     }
                                 }}
                             />
@@ -158,7 +161,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                 borderColor={colors.border}
                                 onPress={async () => {
                                     if (!item.isAllotmentOut) {
-                                        Alert.alert('Info', 'Allotment is not out yet.');
+                                        showAlert({ title: 'Info', message: 'Allotment is not out yet.', type: 'info' });
                                         return;
                                     }
 
@@ -176,14 +179,15 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                     if (hasPans) {
                                         navigation.navigate('AllotmentResult', { ipo: item });
                                     } else {
-                                        Alert.alert(
-                                            "No PANs Found",
-                                            "Please add at least one PAN in your Profile to check allotment.",
-                                            [
+                                        showAlert({
+                                            title: "No PANs Found",
+                                            message: "Please add at least one PAN in your Profile to check allotment.",
+                                            type: 'info',
+                                            buttons: [
                                                 { text: "Cancel", style: "cancel" },
                                                 { text: "Add PAN", onPress: () => navigation.navigate("Root", { screen: "PANs" }) }
                                             ]
-                                        );
+                                        });
                                     }
                                 }}
                             />

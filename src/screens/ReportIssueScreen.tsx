@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, TextInput, ScrollView } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Mail, CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeft, Send, AlertTriangle, FileText, CheckCircle2, Mail } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useUI } from '../context/UIContext';
 
 const ISSUES = [
     "Declared Allotted but showing Not Allotted",
@@ -18,6 +19,7 @@ export const ReportIssueScreen = () => {
     const { colors } = useTheme();
     const navigation = useNavigation();
     const route = useRoute();
+    const { showAlert } = useUI();
     const params = (route.params as any) || {};
     const { ipoName, userName, panNumber, allotmentStatus } = params;
 
@@ -58,7 +60,11 @@ Thank you.`;
             if (supported) {
                 Linking.openURL(mailtoUrl);
             } else {
-                Alert.alert("Error", "Could not open email app. Please copy the email address manually.");
+                showAlert({
+                    title: "Error",
+                    message: "Could not open email app. Please copy the email address manually.",
+                    type: 'error'
+                });
             }
         });
     };

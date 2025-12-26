@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft, FileText, ExternalLink, Github } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 
 export const LicensesScreen = () => {

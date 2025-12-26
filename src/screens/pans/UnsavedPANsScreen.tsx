@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { addUserPAN } from '../../services/api';
 import { useFocusEffect } from '@react-navigation/native';
+import { useUI } from '../../context/UIContext';
 
 interface PANData {
     id: string;
@@ -18,6 +19,7 @@ interface PANData {
 export const UnsavedPANsScreen = () => {
     const { colors } = useTheme();
     const { isAuthenticated, token, refreshProfile } = useAuth();
+    const { showAlert, showToast } = useUI();
     const [modalVisible, setModalVisible] = useState(false);
     const [editingPAN, setEditingPAN] = useState<PANData | null>(null);
     const [pans, setPans] = useState<PANData[]>([]);
@@ -34,11 +36,19 @@ export const UnsavedPANsScreen = () => {
             const stored = await AsyncStorage.getItem('unsaved_pans');
             if (stored) {
                 setPans(JSON.parse(stored));
+            } else {
+                setPans([]);
             }
         } catch (e) {
             console.error(e);
+            setPans([]);
         }
     };
+
+    // Reload when auth changes (e.g. after login/sync)
+    useEffect(() => {
+        loadPans();
+    }, [isAuthenticated]);
 
     const savePans = async (newPans: PANData[]) => {
         setPans(newPans);
@@ -57,7 +67,11 @@ export const UnsavedPANsScreen = () => {
         } else {
             // Check duplicates
             if (pans.some(p => p.panNumber === data.panNumber)) {
-                Alert.alert("Duplicate", "This PAN is already in your unsaved list.");
+                showAlert({
+                    title: "Duplicate",
+                    message: "This PAN is already in your unsaved list.",
+                    type: "warning"
+                });
                 return;
             }
             const newPAN: PANData = {
@@ -76,22 +90,32 @@ export const UnsavedPANsScreen = () => {
     };
 
     const handleDeletePAN = async (id: string) => {
-        Alert.alert("Delete", "Remove this PAN from local storage?", [
-            { text: "Cancel", style: "cancel" },
-            {
-                text: "Delete",
-                style: "destructive",
-                onPress: async () => {
-                    const updated = pans.filter(pan => pan.id !== id);
-                    await savePans(updated);
+        showAlert({
+            title: "Delete PAN",
+            message: "Remove this PAN from local storage?",
+            type: "warning",
+            buttons: [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                        const updated = pans.filter(pan => pan.id !== id);
+                        await savePans(updated);
+                        showToast({ message: "PAN deleted locally", type: "info" });
+                    }
                 }
-            }
-        ]);
+            ]
+        });
     };
 
     const handleSync = async (pan: PANData) => {
         if (!isAuthenticated || !token) {
-            Alert.alert("Login Required", "Please login to sync your PANs.");
+            showAlert({
+                title: "Login Required",
+                message: "Please login to sync your PANs.",
+                type: "info"
+            });
             return;
         }
 
@@ -103,10 +127,14 @@ export const UnsavedPANsScreen = () => {
             const updated = pans.filter(p => p.id !== pan.id);
             await savePans(updated);
 
-            Alert.alert("Synced", "PAN synced successfully!");
+            showToast({ message: "PAN synced successfully!", type: "success" });
             if (refreshProfile) await refreshProfile();
         } catch (error: any) {
-            Alert.alert("Sync Failed", error.message);
+            showAlert({
+                title: "Sync Failed",
+                message: error.message,
+                type: "error"
+            });
         } finally {
             setIsLoading(false);
         }
@@ -133,14 +161,6 @@ export const UnsavedPANsScreen = () => {
                 </View>
             </View>
             <View style={styles.actionButtons}>
-                {isAuthenticated && (
-                    <TouchableOpacity
-                        style={[styles.editBtn, { marginRight: 4 }]}
-                        onPress={() => handleSync(item)}
-                    >
-                        <CloudUpload size={20} color={colors.primary} />
-                    </TouchableOpacity>
-                )}
                 <TouchableOpacity
                     style={styles.editBtn}
                     onPress={() => handleEditPAN(item)}
@@ -164,12 +184,9 @@ export const UnsavedPANsScreen = () => {
 
             {pans.length === 0 ? (
                 <View style={styles.emptyContainer}>
-                    <CreditCard size={64} color={colors.text} style={{ opacity: 0.3 }} />
-                    <Text style={[styles.emptyText, { color: colors.text, opacity: 0.5 }]}>
-                        No unsaved PANs
-                    </Text>
-                    <Text style={[styles.emptySubText, { color: colors.text, opacity: 0.4 }]}>
-                        Tap + to add a local temporary PAN
+                    <CreditCard size={64} color={colors.text} style={{ opacity: 0.2, marginBottom: 16 }} />
+                    <Text style={[styles.emptyText, { color: colors.text, opacity: 0.6, textAlign: 'center' }]}>
+                        Save multiple PANs and check the allotment in one click
                     </Text>
                 </View>
             ) : (
@@ -244,6 +261,9 @@ const styles = StyleSheet.create({
     panSubtext: {
         fontSize: 12,
     },
+    syncLink: {
+        marginTop: 4,
+    },
     actionButtons: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -260,6 +280,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         padding: 32,
+        paddingBottom: 100, // Shift content up for better visual centering
     },
     emptyText: {
         fontSize: 18,
