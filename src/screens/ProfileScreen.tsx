@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
-import { User, Mail, LogOut, Loader, CheckCircle } from 'lucide-react-native';
+import { User, Mail, LogOut, Loader, CheckCircle, ShieldCheck, FileText } from 'lucide-react-native';
 import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
 
 export const ProfileScreen = () => {
     const { colors } = useTheme();
+    const navigation = useNavigation<any>();
     const { user, isAuthenticated, startLogin, pollLoginStatus, logout } = useAuth();
 
     // Auth State
@@ -58,7 +60,7 @@ export const ProfileScreen = () => {
                     behavior={Platform.OS === "ios" ? "padding" : "height"}
                     style={{ flex: 1 }}
                 >
-                    <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+                    <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
                         <View style={styles.authContainer}>
                             <View style={[styles.logoContainer, { backgroundColor: colors.primary + '15' }]}>
                                 <Mail size={48} color={colors.primary} />
@@ -97,11 +99,25 @@ export const ProfileScreen = () => {
                                     <Text style={[styles.verificationText, { color: colors.text, opacity: 0.7 }]}>
                                         We sent a verification link to {email}. Tap the link in your email to login automatically.
                                     </Text>
-                                    <TouchableOpacity onPress={() => setVerificationStep(false)} style={styles.cancelLink}>
+                                    <TouchableOpacity
+                                        style={styles.cancelLink}
+                                        onPress={() => setVerificationStep(false)}
+                                    >
                                         <Text style={{ color: colors.primary }}>Cancel</Text>
                                     </TouchableOpacity>
                                 </View>
                             )}
+
+                            {/* Footer Links for Unauthenticated Users */}
+                            <View style={styles.footerLinks}>
+                                <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')}>
+                                    <Text style={[styles.footerLinkText, { color: colors.text }]}>Privacy Policy</Text>
+                                </TouchableOpacity>
+                                <Text style={[styles.footerDivider, { color: colors.text }]}>•</Text>
+                                <TouchableOpacity onPress={() => navigation.navigate('Licenses')}>
+                                    <Text style={[styles.footerLinkText, { color: colors.text }]}>Licenses</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </ScrollView>
                 </KeyboardAvoidingView>
@@ -146,6 +162,22 @@ export const ProfileScreen = () => {
                 </View>
 
                 <TouchableOpacity
+                    style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => navigation.navigate('PrivacyPolicy')}
+                >
+                    <ShieldCheck size={20} color={colors.primary} />
+                    <Text style={[styles.menuButtonText, { color: colors.text }]}>Privacy Policy</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                    onPress={() => navigation.navigate('Licenses')}
+                >
+                    <FileText size={20} color={colors.primary} />
+                    <Text style={[styles.menuButtonText, { color: colors.text }]}>Licenses</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
                     style={[styles.logoutButton, { borderColor: '#F44336' }]}
                     onPress={logout}
                 >
@@ -166,8 +198,9 @@ export const ProfileScreen = () => {
 const styles = StyleSheet.create({
     container: { flex: 1 },
     content: { padding: 20 },
+    // ... existing styles
     // Auth Styles
-    authContainer: { flex: 1, justifyContent: 'center', padding: 30, alignItems: 'center' },
+    authContainer: { flex: 1, justifyContent: 'center', padding: 30, alignItems: 'center', paddingBottom: 100 },
     logoContainer: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
     welcomeTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
     welcomeSubtitle: { fontSize: 16, textAlign: 'center', marginBottom: 32, lineHeight: 22 },
@@ -175,7 +208,7 @@ const styles = StyleSheet.create({
     loginButton: { width: '100%', height: 50, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
     buttonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
     verificationContainer: { alignItems: 'center', width: '100%' },
-    spinner: { marginBottom: 20 }, // Note: Lucide does not animate automatically, ActivityIndicator usually better but Loader icon works for static
+    spinner: { marginBottom: 20 },
     verificationTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 12 },
     verificationText: { textAlign: 'center', fontSize: 15, marginBottom: 24, lineHeight: 22 },
     cancelLink: { padding: 10 },
@@ -196,6 +229,11 @@ const styles = StyleSheet.create({
     divider: { height: 1, marginVertical: 16, opacity: 0.5 },
     logoutButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 16, borderRadius: 12, borderWidth: 1.5, gap: 8, marginBottom: 24 },
     logoutText: { fontSize: 16, fontWeight: '600' },
+    menuButton: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 12, borderWidth: 1, gap: 16, marginBottom: 16 },
+    menuButtonText: { fontSize: 16, fontWeight: '500' },
     infoBanner: { borderRadius: 12, padding: 16, alignItems: 'center' },
     infoText: { fontSize: 14, fontWeight: '500' },
+    footerLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 40, opacity: 0.6 },
+    footerLinkText: { fontSize: 13, textDecorationLine: 'underline' },
+    footerDivider: { marginHorizontal: 10, fontSize: 13 },
 });

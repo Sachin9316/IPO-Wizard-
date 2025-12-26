@@ -31,10 +31,11 @@ const fetchWithCache = async (url: string, options?: RequestInit) => {
     throw new Error('Network request failed and no cache available');
 };
 
-export const fetchMainboardIPOs = async (page = 1, limit = 10, status?: string) => {
+export const fetchMainboardIPOs = async (page = 1, limit = 10, status?: string, search?: string) => {
     try {
         let url = `${BASE_URL}/mainboards?page=${page}&limit=${limit}`;
         if (status) url += `&status=${status}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
 
         const data = await fetchWithCache(url);
         return data.data || [];
@@ -44,10 +45,11 @@ export const fetchMainboardIPOs = async (page = 1, limit = 10, status?: string) 
     }
 };
 
-export const fetchSMEIPOs = async (page = 1, limit = 10, status?: string) => {
+export const fetchSMEIPOs = async (page = 1, limit = 10, status?: string, search?: string) => {
     try {
         let url = `${BASE_URL}/sme-ipos?page=${page}&limit=${limit}`;
         if (status) url += `&status=${status}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
 
         const data = await fetchWithCache(url);
         return data.data || [];

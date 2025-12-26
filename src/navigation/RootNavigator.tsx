@@ -8,6 +8,8 @@ import { GMPScreen } from '../screens/details/GMPScreen';
 import { AllotmentResultScreen } from '../screens/details/AllotmentResultScreen';
 import { IPOData } from '../types/ipo';
 import { SearchScreen } from '../screens/SearchScreen';
+import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
+import { LicensesScreen } from '../screens/LicensesScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +20,8 @@ export type RootStackParamList = {
     GMPStatus: { gmpDetails: any, name: string };
     AllotmentResult: { ipoName: string; registrarLink?: string };
     Search: undefined;
+    PrivacyPolicy: undefined;
+    Licenses: undefined;
 };
 export const RootNavigator = () => {
     const { colors } = useTheme();
@@ -64,6 +68,16 @@ export const RootNavigator = () => {
             <Stack.Screen
                 name="Search"
                 component={SearchScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="PrivacyPolicy"
+                component={PrivacyPolicyScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="Licenses"
+                component={LicensesScreen}
                 options={{ headerShown: false }}
             />
         </Stack.Navigator>

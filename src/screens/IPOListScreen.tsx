@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator, TextInput, TouchableOpacity } from 'react-native';
+import { Filter, X } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { IPOData } from '../types/ipo';
 import { IPOCard } from '../components/IPOCard';
@@ -27,6 +28,19 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
     const [loadingMore, setLoadingMore] = React.useState(false);
     const [fetchStage, setFetchStage] = React.useState(0);
 
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [debouncedQuery, setDebouncedQuery] = React.useState('');
+
+    // Debounce Search
+    React.useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedQuery(searchQuery);
+        }, 500);
+
+        return () => clearTimeout(handler);
+    }, [searchQuery]);
+
+    // Define loadData BEFORE using it in useEffect
     const loadData = React.useCallback(async (pageNum: number, stage: number, shouldRefresh = false) => {
         try {
             if (pageNum === 1 && stage === 0) setLoading(true);
@@ -35,6 +49,9 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
             let fetchedData: any[] = [];
             const limit = 10;
             let currentFetchPromise: Promise<any[]> | null = null;
+
+            // Pass search query if type is Alloted
+            const search = type === 'Alloted' ? debouncedQuery : undefined;
 
             if (type === 'Mainboard') {
                 // Stage 0: OPEN, Stage 1: UPCOMING
@@ -52,8 +69,22 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
             } else if (type === 'Alloted') {
                 // Keeping simpler logic for Alloted for now
                 if (pageNum === 1 && stage === 0) {
-                    const [mb, sme] = await Promise.all([fetchMainboardIPOs(1, 100), fetchSMEIPOs(1, 100)]);
-                    fetchedData = [...mb, ...sme].filter(ipo => ipo.status === 'Closed' || ipo.isAllotmentOut);
+                    const [mbClosed, mbListed, smeClosed, smeListed] = await Promise.all([
+                        fetchMainboardIPOs(1, 50, 'CLOSED', search),
+                        fetchMainboardIPOs(1, 50, 'LISTED', search),
+                        fetchSMEIPOs(1, 50, 'CLOSED', search),
+                        fetchSMEIPOs(1, 50, 'LISTED', search)
+                    ]);
+                    // Merge all closed/listed IPOs
+                    fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed];
+
+                    // Sort by isAllotmentOut (true first) then by close_date descending (recent first)
+                    fetchedData.sort((a, b) => {
+                        if (a.isAllotmentOut === b.isAllotmentOut) {
+                            return new Date(b.close_date).getTime() - new Date(a.close_date).getTime();
+                        }
+                        return a.isAllotmentOut ? -1 : 1;
+                    });
                 }
             } else if (type === 'Watchlist') {
                 if (isAuthenticated && token) {
@@ -101,12 +132,22 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
             setRefreshing(false);
             setLoadingMore(false);
         }
-    }, [type, token, isAuthenticated]);
+    }, [type, token, isAuthenticated, debouncedQuery]);
 
-    // Initial load on mount
+    // NOW use loadData in useEffects
+    // Reload data when debounced query changes (only for Alloted)
     React.useEffect(() => {
-        loadData(1, 0, true);
-    }, [loadData]);
+        if (type === 'Alloted') {
+            loadData(1, 0, true);
+        }
+    }, [debouncedQuery, loadData, type]);
+
+    // Initial load on mount for others
+    React.useEffect(() => {
+        if (type !== 'Alloted') {
+            loadData(1, 0, true);
+        }
+    }, [loadData, type]);
 
     // Refresh when tab comes into focus (only for Watchlist to sync changes)
     useFocusEffect(
@@ -146,36 +187,140 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
         );
     };
 
-    if (loading && !refreshing && page === 1 && fetchStage === 0) {
-        return (
-            <View style={[styles.container, { backgroundColor: colors.background, justifyContent: 'center', alignItems: 'center' }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
+    const [filterType, setFilterType] = React.useState<'ALL' | 'OUT' | 'AWAITED'>('ALL');
+
+    // Filter Logic
+    const filteredIpos = React.useMemo(() => {
+        if (type !== 'Alloted') return ipos;
+        if (filterType === 'ALL') return ipos;
+        if (filterType === 'OUT') return ipos.filter(ipo => ipo.isAllotmentOut);
+        if (filterType === 'AWAITED') return ipos.filter(ipo => !ipo.isAllotmentOut);
+        return ipos;
+    }, [ipos, filterType, type]);
+
+    const [showFilterMenu, setShowFilterMenu] = React.useState(false);
+
+    // Custom header with Search for Alloted - Moved outside renderHeader function to be inline for sticky behavior
+    const headerContent = type === 'Alloted' ? (
+        <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 3000 }}>
+            <View style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.card,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                paddingHorizontal: 12,
+                height: 48
+            }}>
+                <TextInput
+                    style={{ flex: 1, color: colors.text, fontSize: 16 }}
+                    placeholder="Search IPOs..."
+                    placeholderTextColor={colors.text + '80'}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <X color={colors.text} size={20} />
+                    </TouchableOpacity>
+                )}
             </View>
-        );
-    }
+            <View style={{ zIndex: 3001 }}>
+                <TouchableOpacity
+                    onPress={() => setShowFilterMenu(!showFilterMenu)}
+                    style={{
+                        height: 48,
+                        width: 48,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        backgroundColor: colors.card,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: colors.border
+                    }}
+                >
+                    <Filter color={filterType === 'ALL' ? colors.text : colors.primary} size={24} />
+                </TouchableOpacity>
+
+                {showFilterMenu && (
+                    <View style={{
+                        position: 'absolute',
+                        top: 52,
+                        right: 0,
+                        backgroundColor: colors.card,
+                        borderRadius: 12,
+                        padding: 8,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        minWidth: 160,
+                        shadowColor: "#000",
+                        shadowOffset: {
+                            width: 0,
+                            height: 2,
+                        },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 3.84,
+                        elevation: 5,
+                        zIndex: 4000
+                    }}>
+                        <TouchableOpacity
+                            style={{ paddingVertical: 10, paddingHorizontal: 12 }}
+                            onPress={() => { setFilterType('ALL'); setShowFilterMenu(false); }}
+                        >
+                            <Text style={{ color: filterType === 'ALL' ? colors.primary : colors.text, fontWeight: filterType === 'ALL' ? 'bold' : 'normal' }}>All</Text>
+                        </TouchableOpacity>
+                        <View style={{ height: 1, backgroundColor: colors.border }} />
+                        <TouchableOpacity
+                            style={{ paddingVertical: 10, paddingHorizontal: 12 }}
+                            onPress={() => { setFilterType('OUT'); setShowFilterMenu(false); }}
+                        >
+                            <Text style={{ color: filterType === 'OUT' ? colors.primary : colors.text, fontWeight: filterType === 'OUT' ? 'bold' : 'normal' }}>Allotment Out</Text>
+                        </TouchableOpacity>
+                        <View style={{ height: 1, backgroundColor: colors.border }} />
+                        <TouchableOpacity
+                            style={{ paddingVertical: 10, paddingHorizontal: 12 }}
+                            onPress={() => { setFilterType('AWAITED'); setShowFilterMenu(false); }}
+                        >
+                            <Text style={{ color: filterType === 'AWAITED' ? colors.primary : colors.text, fontWeight: filterType === 'AWAITED' ? 'bold' : 'normal' }}>Awaited</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+            </View>
+        </View>
+    ) : null;
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <FlatList
-                data={ipos}
-                renderItem={({ item }) => <IPOCard item={item} onPress={handlePress} />}
-                keyExtractor={(item, index) => `${item.id}-${index}`}
-                contentContainerStyle={styles.listContent}
-                ListEmptyComponent={
-                    <View style={{ padding: 20, alignItems: 'center' }}>
-                        <Text style={{ color: colors.text, textAlign: 'center', marginTop: 20 }}>
-                            {type === 'Watchlist' && !isAuthenticated
-                                ? "Please login to view your watchlist."
-                                : "No IPOs found."}
-                        </Text>
-                    </View>
-                }
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                onEndReached={loadMore}
-                onEndReachedThreshold={0.5}
-                ListFooterComponent={renderFooter}
-            />
+            {headerContent}
+
+            {loading && !refreshing && page === 1 && fetchStage === 0 ? (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+            ) : (
+                <FlatList
+                    data={filteredIpos}
+                    renderItem={({ item }) => <IPOCard item={item} onPress={handlePress} />}
+                    keyExtractor={(item, index) => `${item.id}-${index}`}
+                    contentContainerStyle={[styles.listContent, type === 'Alloted' && { paddingTop: 8 }]}
+                    ListEmptyComponent={
+                        <View style={{ padding: 20, alignItems: 'center' }}>
+                            <Text style={{ color: colors.text, textAlign: 'center', marginTop: 20 }}>
+                                {type === 'Watchlist' && !isAuthenticated
+                                    ? "Please login to view your watchlist."
+                                    : "No IPOs found."}
+                            </Text>
+                        </View>
+                    }
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    onEndReached={loadMore}
+                    onEndReachedThreshold={0.5}
+                    ListFooterComponent={renderFooter}
+                />
+            )}
         </View>
     );
 };
@@ -186,5 +331,12 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: 16,
+    },
+    searchInput: {
+        height: 48,
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        fontSize: 16,
     },
 });

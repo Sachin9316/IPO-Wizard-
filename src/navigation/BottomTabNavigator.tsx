@@ -37,16 +37,6 @@ export const BottomTabNavigator = () => {
                 }}
             />
             <Tab.Screen
-                name="PANs"
-                component={PANsNavigator}
-                options={{
-                    tabBarLabel: 'PANs',
-                    tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
-                    headerShown: true,
-                    header: () => <CustomHeader title="PAN's" />
-                }}
-            />
-            <Tab.Screen
                 name="Alloted"
                 component={IPOListScreen}
                 initialParams={{ type: 'Alloted' }}
@@ -55,6 +45,16 @@ export const BottomTabNavigator = () => {
                     tabBarIcon: ({ color, size }) => <PieChart color={color} size={size} />,
                     headerShown: true,
                     header: () => <CustomHeader title="Allotment Status" />
+                }}
+            />
+            <Tab.Screen
+                name="PANs"
+                component={PANsNavigator}
+                options={{
+                    tabBarLabel: 'PANs',
+                    tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
+                    headerShown: true,
+                    header: () => <CustomHeader title="PAN's" />
                 }}
             />
             <Tab.Screen
