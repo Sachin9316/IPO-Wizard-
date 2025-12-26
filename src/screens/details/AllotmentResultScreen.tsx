@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Easing, Share, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { X, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy } from 'lucide-react-native';
+import { X, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy, MoreVertical } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 
@@ -128,59 +128,101 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         item.panNumber.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const [activeMenuPan, setActiveMenuPan] = useState<string | null>(null);
+
+    const handleReportPress = () => {
+        setActiveMenuPan(null);
+        navigation.navigate('ReportIssue');
+    };
+
     const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => {
-        let statusColor, bgColor, statusText;
+        let statusColor, statusText;
 
         switch (item.status) {
             case 'ALLOTTED':
-                statusColor = '#2E7D32';
-                bgColor = '#E8F5E9';
+                statusColor = '#15803d'; // Green-700
                 statusText = 'ALLOTTED';
                 break;
             case 'NOT_ALLOTTED':
-                statusColor = '#C62828';
-                bgColor = '#FFEBEE';
+                statusColor = '#b91c1c'; // Red-700
                 statusText = 'NOT ALLOTTED';
                 break;
             case 'NOT_APPLIED':
             default:
-                statusColor = '#616161';
-                bgColor = '#F5F5F5';
+                statusColor = '#475569'; // Slate-600
                 statusText = 'NOT APPLIED';
                 break;
         }
 
-        // Adjust colors for dark mode
+        // Dark mode adjustments
         if (colors.background !== '#FFFFFF') {
             if (item.status === 'ALLOTTED') {
-                bgColor = '#1B5E20';
-                statusColor = '#E8F5E9';
+                statusColor = '#4ade80'; // Green-400
             } else if (item.status === 'NOT_ALLOTTED') {
-                bgColor = '#B71C1C';
-                statusColor = '#FFEBEE';
+                statusColor = '#f87171'; // Red-400
             } else {
-                bgColor = '#2C2C2C';
-                statusColor = '#9E9E9E';
+                statusColor = '#94a3b8'; // Slate-400
             }
         }
+
+        const isMenuOpen = activeMenuPan === item.panNumber;
 
         return (
             <Animated.View style={{
                 opacity: fadeAnim,
-                transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [10 * (index + 1), 0] }) }]
+                marginBottom: 10,
+                transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [10 * (index + 1), 0] }) }],
+                zIndex: isMenuOpen ? 100 : 1 // Bring active card to front
             }}>
-                <View style={[styles.card, { backgroundColor: bgColor, borderColor: statusColor, borderLeftWidth: 4 }]}>
+                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 }]}>
                     <View style={styles.cardContent}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={[styles.cardName, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                            <Text style={[styles.cardPan, { color: colors.text }]}>{item.panNumber}</Text>
+                        <View style={{ flex: 1, gap: 4 }}>
+                            <Text style={[styles.cardName, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>{item.name}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <UserIcon size={12} color={colors.text} style={{ opacity: 0.5 }} />
+                                <Text style={[styles.cardPan, { color: colors.text }]}>{item.panNumber}</Text>
+                            </View>
                         </View>
 
-                        <View style={{ width: 120, alignItems: 'flex-end', justifyContent: 'center' }}>
-                            <Text style={[styles.cardStatus, { color: statusColor, textAlign: 'right' }]} numberOfLines={1}>{statusText}</Text>
-                            {item.status === 'ALLOTTED' && (
-                                <Text style={{ fontSize: 10, color: statusColor, marginTop: 2, textAlign: 'right' }}>1 Lot / {item.units} Shares</Text>
-                            )}
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, zIndex: 10 }}>
+                            <View style={{ alignItems: 'flex-end' }}>
+                                <Text style={[styles.cardStatus, { color: statusColor, fontSize: 13, fontWeight: '700' }]}>{statusText}</Text>
+                                {item.status === 'ALLOTTED' && (
+                                    <Text style={{ fontSize: 11, color: statusColor, marginTop: 2, fontWeight: '500' }}>1 Lot / {item.units} Shares</Text>
+                                )}
+                            </View>
+                            <View>
+                                <TouchableOpacity onPress={() => setActiveMenuPan(isMenuOpen ? null : item.panNumber)} style={{ padding: 4 }}>
+                                    <MoreVertical size={20} color={colors.text} style={{ opacity: 0.5 }} />
+                                </TouchableOpacity>
+
+                                {isMenuOpen && (
+                                    <View style={{
+                                        position: 'absolute',
+                                        top: 30,
+                                        right: 0,
+                                        backgroundColor: colors.card,
+                                        borderRadius: 8,
+                                        padding: 8,
+                                        borderWidth: 1,
+                                        borderColor: colors.border,
+                                        minWidth: 120,
+                                        shadowColor: "#000",
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.1,
+                                        shadowRadius: 4,
+                                        elevation: 5,
+                                        zIndex: 1000
+                                    }}>
+                                        <TouchableOpacity
+                                            onPress={handleReportPress}
+                                            style={{ flexDirection: 'row', alignItems: 'center', padding: 8 }}
+                                        >
+                                            <Text style={{ color: colors.text, fontSize: 14 }}>Report Issue</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -213,13 +255,13 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
                         {/* Simple Summary */}
                         {allottedCount > 0 && (
-                            <View style={[styles.simpleBanner, { backgroundColor: '#E8F5E9' }]}>
-                                <Text style={{ color: '#2E7D32', fontWeight: 'bold' }}>🎉 {allottedCount} Applications Allotted!</Text>
+                            <View style={[styles.simpleBanner, { backgroundColor: colors.primary + '15', marginBottom: 16 }]}>
+                                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>🎉 {allottedCount} Applications Allotted!</Text>
                             </View>
                         )}
 
-                        <View style={{ paddingHorizontal: 16, marginTop: 12 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                        <View style={{ paddingHorizontal: 16, marginTop: allottedCount > 0 ? 0 : 16 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                                 <View style={[styles.ipoIconContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
                                     {ipoLogo ? (
                                         <Image source={{ uri: ipoLogo }} style={styles.ipoIcon} resizeMode="contain" />
@@ -227,14 +269,14 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                         <Trophy size={20} color={colors.primary} />
                                     )}
                                 </View>
-                                <Text style={[styles.companyTitle, { color: colors.text, marginBottom: 0, marginLeft: 10 }]}>{ipoName}</Text>
+                                <Text style={[styles.companyTitle, { color: colors.text, marginBottom: 0, marginLeft: 12 }]}>{ipoName}</Text>
                             </View>
 
                             <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
                                 <Search size={18} color={colors.text} style={{ opacity: 0.5, marginRight: 8 }} />
                                 <TextInput
-                                    style={{ flex: 1, color: colors.text, fontSize: 13, paddingVertical: 4 }}
-                                    placeholder="Search..."
+                                    style={{ flex: 1, color: colors.text, fontSize: 14, paddingVertical: 4 }}
+                                    placeholder="Search by name or PAN..."
                                     placeholderTextColor={colors.text + '80'}
                                     value={searchQuery}
                                     onChangeText={setSearchQuery}
@@ -243,21 +285,21 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                         </View>
 
                         <View style={styles.statsContainer}>
-                            <View style={[styles.statBox, { backgroundColor: '#E3F2FD', borderColor: '#2196F3' }]}>
-                                <Text style={[styles.statCount, { color: '#1565C0' }]}>{filteredResults.filter(r => r.status !== 'NOT_APPLIED').length}</Text>
-                                <Text style={[styles.statLabel, { color: '#1565C0' }]}>Applied</Text>
+                            <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                <Text style={[styles.statCount, { color: colors.primary }]}>{filteredResults.filter(r => r.status !== 'NOT_APPLIED').length}</Text>
+                                <Text style={[styles.statLabel, { color: colors.text, opacity: 0.6 }]}>Applied</Text>
                             </View>
-                            <View style={[styles.statBox, { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' }]}>
-                                <Text style={[styles.statCount, { color: '#2E7D32' }]}>{filteredResults.filter(r => r.status === 'ALLOTTED').length}</Text>
-                                <Text style={[styles.statLabel, { color: '#2E7D32' }]}>Allotted</Text>
+                            <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                <Text style={[styles.statCount, { color: '#15803d' }]}>{filteredResults.filter(r => r.status === 'ALLOTTED').length}</Text>
+                                <Text style={[styles.statLabel, { color: colors.text, opacity: 0.6 }]}>Allotted</Text>
                             </View>
-                            <View style={[styles.statBox, { backgroundColor: '#FFEBEE', borderColor: '#F44336' }]}>
-                                <Text style={[styles.statCount, { color: '#C62828' }]}>{filteredResults.filter(r => r.status === 'NOT_ALLOTTED').length}</Text>
-                                <Text style={[styles.statLabel, { color: '#C62828' }]}>Not Allotted</Text>
+                            <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                <Text style={[styles.statCount, { color: '#b91c1c' }]}>{filteredResults.filter(r => r.status === 'NOT_ALLOTTED').length}</Text>
+                                <Text style={[styles.statLabel, { color: colors.text, opacity: 0.6 }]}>Not Allotted</Text>
                             </View>
-                            <View style={[styles.statBox, { backgroundColor: '#F5F5F5', borderColor: '#9E9E9E' }]}>
-                                <Text style={[styles.statCount, { color: '#616161' }]}>{filteredResults.filter(r => r.status === 'NOT_APPLIED').length}</Text>
-                                <Text style={[styles.statLabel, { color: '#616161' }]}>Not Applied</Text>
+                            <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                                <Text style={[styles.statCount, { color: colors.text, opacity: 0.6 }]}>{filteredResults.filter(r => r.status === 'NOT_APPLIED').length}</Text>
+                                <Text style={[styles.statLabel, { color: colors.text, opacity: 0.6 }]}>Not Applied</Text>
                             </View>
                         </View>
 
@@ -265,11 +307,12 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                             data={filteredResults}
                             keyExtractor={item => item.panNumber}
                             renderItem={renderResultCard}
-                            contentContainerStyle={{ padding: 16, paddingTop: 0 }}
+                            contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 40 }}
                             ListEmptyComponent={
                                 <Text style={{ textAlign: 'center', marginTop: 32, color: colors.text, opacity: 0.6 }}>No results.</Text>
                             }
                         />
+
                     </View>
                 ) : (
                     <View style={styles.centerContainer}>

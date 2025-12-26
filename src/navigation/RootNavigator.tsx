@@ -10,6 +10,7 @@ import { IPOData } from '../types/ipo';
 import { SearchScreen } from '../screens/SearchScreen';
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { LicensesScreen } from '../screens/LicensesScreen';
+import { ReportIssueScreen } from '../screens/ReportIssueScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,6 +23,7 @@ export type RootStackParamList = {
     Search: undefined;
     PrivacyPolicy: undefined;
     Licenses: undefined;
+    ReportIssue: undefined;
 };
 export const RootNavigator = () => {
     const { colors } = useTheme();
@@ -78,6 +80,11 @@ export const RootNavigator = () => {
             <Stack.Screen
                 name="Licenses"
                 component={LicensesScreen}
+                options={{ headerShown: false }}
+            />
+            <Stack.Screen
+                name="ReportIssue"
+                component={ReportIssueScreen}
                 options={{ headerShown: false }}
             />
         </Stack.Navigator>
