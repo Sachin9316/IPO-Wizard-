@@ -1,8 +1,11 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { X, TrendingUp, Users, Briefcase, UserCheck } from 'lucide-react-native';
+import { PieChart } from 'react-native-chart-kit';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export const SubscriptionScreen = ({ route, navigation }: any) => {
     const { colors } = useTheme();
@@ -117,6 +120,29 @@ export const SubscriptionScreen = ({ route, navigation }: any) => {
                     </View>
                 </View>
 
+                {/* Pie Chart for Distribution */}
+                <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 16 }]}>Demand Distribution</Text>
+                    <PieChart
+                        data={[
+                            { name: 'QIB', population: subscriptionDetails.qib, color: '#2196F3', legendFontColor: colors.text, legendFontSize: 12 },
+                            { name: 'NII', population: subscriptionDetails.nii, color: '#FF9800', legendFontColor: colors.text, legendFontSize: 12 },
+                            { name: 'Retail', population: subscriptionDetails.retail, color: '#4CAF50', legendFontColor: colors.text, legendFontSize: 12 },
+                            { name: 'Emp.', population: subscriptionDetails.employee || 0, color: '#9C27B0', legendFontColor: colors.text, legendFontSize: 12 },
+                        ]}
+                        width={SCREEN_WIDTH - 60}
+                        height={200}
+                        chartConfig={{
+                            color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+                        }}
+                        accessor={"population"}
+                        backgroundColor={"transparent"}
+                        paddingLeft={"15"}
+                        center={[10, 0]}
+                        absolute
+                    />
+                </View>
+
                 <View style={styles.grid}>
                     <View style={styles.row}>
                         <View style={{ flex: 1 }}>
@@ -200,6 +226,18 @@ const styles = StyleSheet.create({
     subtitle: {
         fontSize: 14,
         opacity: 0.6,
+    },
+    chartCard: {
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        marginBottom: 24,
+        alignItems: 'center',
+    },
+    sectionTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 16,
     },
     heroCard: {
         borderRadius: 20,

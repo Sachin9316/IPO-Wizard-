@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { X, TrendingUp, Calendar } from 'lucide-react-native';
-import Svg, { Path, Circle, Line, Text as SvgText } from 'react-native-svg';
+import { LineChart } from 'react-native-chart-kit';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -75,59 +75,53 @@ export const GMPScreen = ({ route, navigation }: any) => {
                 {/* Chart Section */}
                 {prices.length > 1 && (
                     <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                        <Text style={[styles.chartTitle, { color: colors.text }]}>Price Movement</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 16 }}>
+                            <Text style={[styles.chartTitle, { color: colors.text }]}>Price Movement</Text>
+                            <TrendingUp size={16} color="#4CAF50" />
+                        </View>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            <View style={{ paddingHorizontal: 10 }}>
-                                <Svg width={totalChartWidth} height={chartHeight}>
-                                    {/* Grid Lines */}
-                                    <Line x1={padding} y1={verticalPadding} x2={padding} y2={chartHeight - verticalPadding} stroke={colors.border} strokeWidth="1" />
-                                    <Line x1={padding} y1={chartHeight - verticalPadding} x2={totalChartWidth - padding} y2={chartHeight - verticalPadding} stroke={colors.border} strokeWidth="1" />
-
-                                    {/* Trend Line */}
-                                    <Path d={pathD} stroke={colors.primary} strokeWidth="3" fill="none" />
-
-                                    {/* Data Points and Labels */}
-                                    {gmpDetails.map((item: any, index: number) => {
-                                        const x = getX(index);
-                                        const y = getY(item.price);
-                                        return (
-                                            <React.Fragment key={index}>
-                                                <Circle
-                                                    cx={x}
-                                                    cy={y}
-                                                    r="4"
-                                                    fill={colors.background}
-                                                    stroke={colors.primary}
-                                                    strokeWidth="2"
-                                                />
-                                                {/* Price Label */}
-                                                <SvgText
-                                                    x={x}
-                                                    y={y - 15}
-                                                    fontSize="10"
-                                                    fontWeight="bold"
-                                                    fill={colors.text}
-                                                    textAnchor="middle"
-                                                >
-                                                    ₹ {item.price}
-                                                </SvgText>
-                                                {/* Date Label */}
-                                                <SvgText
-                                                    x={x}
-                                                    y={chartHeight - verticalPadding + 15}
-                                                    fontSize="10"
-                                                    fill={colors.text}
-                                                    textAnchor="middle"
-                                                    opacity={0.6}
-                                                >
-                                                    {item.date}
-                                                </SvgText>
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </Svg>
-                            </View>
+                            <LineChart
+                                data={{
+                                    labels: gmpDetails.map((d: any) => d.date.split(' ')[0]), // Shorten date if needed
+                                    datasets: [{ data: prices }]
+                                }}
+                                width={totalChartWidth}
+                                height={220}
+                                chartConfig={{
+                                    backgroundColor: colors.card,
+                                    backgroundGradientFrom: colors.card,
+                                    backgroundGradientTo: colors.card,
+                                    decimalPlaces: 0,
+                                    color: (opacity = 1) => colors.primary,
+                                    labelColor: (opacity = 1) => colors.text + '80',
+                                    style: { borderRadius: 16 },
+                                    propsForDots: {
+                                        r: "6",
+                                        strokeWidth: "2",
+                                        stroke: colors.primary
+                                    },
+                                    fillShadowGradient: colors.primary,
+                                    fillShadowGradientOpacity: 0.2,
+                                }}
+                                bezier
+                                style={{
+                                    marginVertical: 8,
+                                    borderRadius: 16
+                                }}
+                                withInnerLines={false}
+                                withOuterLines={false}
+                                withVerticalLines={false}
+                                withHorizontalLines={true}
+                                segments={4}
+                                formatYLabel={(yValue) => `₹${yValue}`}
+                                onDataPointClick={({ value, getColor }) => {
+                                    // Could add a tooltip here if needed
+                                }}
+                            />
                         </ScrollView>
+                        <Text style={{ fontSize: 10, color: colors.text, opacity: 0.4, marginTop: 8 }}>
+                            ← Scroll to view history →
+                        </Text>
                     </View>
                 )}
 
