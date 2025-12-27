@@ -40,6 +40,8 @@ export interface IPOData {
     subscriptionDetails?: {
         qib: number;
         nii: number;
+        snii?: number;
+        bnii?: number;
         retail: number;
         employee: number;
         total: number;

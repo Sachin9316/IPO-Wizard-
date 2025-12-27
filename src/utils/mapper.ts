@@ -85,6 +85,8 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
         subscriptionDetails: backendData.subscription ? {
             qib: backendData.subscription.qib || 0,
             nii: backendData.subscription.nii || 0,
+            snii: backendData.subscription.snii || 0,
+            bnii: backendData.subscription.bnii || 0,
             retail: backendData.subscription.retail || 0,
             employee: backendData.subscription.employee || 0,
             total: backendData.subscription.total || 0

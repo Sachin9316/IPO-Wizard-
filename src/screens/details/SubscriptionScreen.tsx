@@ -130,9 +130,10 @@ export const SubscriptionScreen = ({ route, navigation }: any) => {
                     <PieChart
                         data={[
                             { name: 'QIB', population: subscriptionDetails.qib, color: '#2196F3', legendFontColor: colors.text, legendFontSize: 12 },
-                            { name: 'NII', population: subscriptionDetails.nii, color: '#FF9800', legendFontColor: colors.text, legendFontSize: 12 },
                             { name: 'Retail', population: subscriptionDetails.retail, color: '#4CAF50', legendFontColor: colors.text, legendFontSize: 12 },
-                            { name: 'Emp.', population: subscriptionDetails.employee || 0, color: '#9C27B0', legendFontColor: colors.text, legendFontSize: 12 },
+                            { name: 'sNII', population: subscriptionDetails.snii || 0, color: '#FF9800', legendFontColor: colors.text, legendFontSize: 12 },
+                            { name: 'bNII', population: subscriptionDetails.bnii || 0, color: '#FF5722', legendFontColor: colors.text, legendFontSize: 12 },
+                            ...(subscriptionDetails.employee ? [{ name: 'Emp.', population: subscriptionDetails.employee, color: '#9C27B0', legendFontColor: colors.text, legendFontSize: 12 }] : []),
                         ]}
                         width={SCREEN_WIDTH - 60}
                         height={200}
@@ -161,17 +162,6 @@ export const SubscriptionScreen = ({ route, navigation }: any) => {
                         <View style={{ width: 16 }} />
                         <View style={{ flex: 1 }}>
                             <SubscriptionCard
-                                label="NII"
-                                value={subscriptionDetails.nii}
-                                icon={<Users size={20} color="#FF9800" />}
-                                color="#FF9800"
-                                description="Non-Institutional"
-                            />
-                        </View>
-                    </View>
-                    <View style={styles.row}>
-                        <View style={{ flex: 1 }}>
-                            <SubscriptionCard
                                 label="Retail"
                                 value={subscriptionDetails.retail}
                                 icon={<UserCheck size={20} color="#4CAF50" />}
@@ -179,15 +169,53 @@ export const SubscriptionScreen = ({ route, navigation }: any) => {
                                 description="Retail Inv."
                             />
                         </View>
+                    </View>
+
+                    <View style={styles.row}>
+                        <View style={{ flex: 1 }}>
+                            <SubscriptionCard
+                                label="sNII"
+                                value={subscriptionDetails.snii || 0}
+                                icon={<Users size={20} color="#FF9800" />}
+                                color="#FF9800"
+                                description="Small NII (2-10L)"
+                            />
+                        </View>
                         <View style={{ width: 16 }} />
                         <View style={{ flex: 1 }}>
                             <SubscriptionCard
-                                label="Employee"
-                                value={subscriptionDetails.employee}
-                                icon={<Users size={20} color="#9C27B0" />}
-                                color="#9C27B0"
-                                description="Employee Quota"
+                                label="bNII"
+                                value={subscriptionDetails.bnii || 0}
+                                icon={<Users size={20} color="#FF5722" />}
+                                color="#FF5722"
+                                description="Big NII (>10L)"
                             />
+                        </View>
+                    </View>
+
+                    <View style={styles.row}>
+                        <View style={{ flex: 1 }}>
+                            <SubscriptionCard
+                                label="NII (Total)"
+                                value={subscriptionDetails.nii}
+                                icon={<Users size={20} color="#FFC107" />}
+                                color="#FFC107"
+                                description="Non-Institutional"
+                            />
+                        </View>
+                        <View style={{ width: 16 }} />
+                        <View style={{ flex: 1 }}>
+                            {subscriptionDetails.employee > 0 ? (
+                                <SubscriptionCard
+                                    label="Employee"
+                                    value={subscriptionDetails.employee}
+                                    icon={<Users size={20} color="#9C27B0" />}
+                                    color="#9C27B0"
+                                    description="Employee Quota"
+                                />
+                            ) : (
+                                <View style={{ flex: 1 }} />
+                            )}
                         </View>
                     </View>
                 </View>
