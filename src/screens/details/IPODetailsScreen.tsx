@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { debounce } from 'lodash';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
@@ -26,9 +27,39 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
     }, []);
     const ipoId = item._id || item.id; // Fallback to id if _id missing (dummy data)
 
-    const isWatchlisted = user?.watchlist?.includes(ipoId);
+    // const isWatchlisted declaration removed as it is replaced by localIsWatchlisted
 
-    const handleToggleWatchlist = async () => {
+    const [localIsWatchlisted, setLocalIsWatchlisted] = useState(false);
+    const toggleCount = useRef(0);
+
+    // Initialize/Sync local state with user data
+    useEffect(() => {
+        if (user?.watchlist && toggleCount.current === 0) {
+            setLocalIsWatchlisted(user.watchlist.includes(ipoId));
+        }
+    }, [user?.watchlist, ipoId]);
+
+    // Debounced API call
+    const syncWatchlist = useCallback(
+        debounce(async (currentToken: string, currentId: string) => {
+            if (toggleCount.current % 2 !== 0) {
+                try {
+                    await toggleWatchlist(currentToken, currentId);
+                    await refreshProfile();
+                } catch (error) {
+                    console.error("Watchlist sync failed", error);
+                    // Revert UI on failure
+                    setLocalIsWatchlisted(prev => !prev);
+                    showAlert({ title: "Error", message: "Failed to update watchlist", type: 'error' });
+                }
+            }
+            // Reset counter after processing
+            toggleCount.current = 0;
+        }, 800),
+        []
+    );
+
+    const handleToggleWatchlist = () => {
         if (!isAuthenticated || !token) {
             showAlert({
                 title: "Login Required",
@@ -41,12 +72,13 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
             });
             return;
         }
-        try {
-            await toggleWatchlist(token, ipoId);
-            await refreshProfile();
-        } catch (error) {
-            showAlert({ title: "Error", message: "Failed to update watchlist", type: 'error' });
-        }
+
+        // Optimistic Update
+        setLocalIsWatchlisted(prev => !prev);
+        toggleCount.current += 1;
+
+        // Trigger debounced sync
+        syncWatchlist(token, ipoId);
     };
 
     return (
@@ -65,8 +97,8 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleToggleWatchlist} style={styles.closeBtn}>
                         <Heart
-                            color={isWatchlisted ? "#E91E63" : colors.text}
-                            fill={isWatchlisted ? "#E91E63" : "transparent"}
+                            color={localIsWatchlisted ? "#E91E63" : colors.text}
+                            fill={localIsWatchlisted ? "#E91E63" : "transparent"}
                             size={24}
                         />
                     </TouchableOpacity>

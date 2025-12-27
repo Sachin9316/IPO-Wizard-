@@ -1,20 +1,29 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { API_CONFIG } from '../config/api.config';
 
 const BASE_URL = API_CONFIG.BASE_URL;
 
 const fetchWithCache = async (url: string, options?: RequestInit) => {
     const cacheKey = `api_cache_${url}`;
-    try {
-        const response = await fetch(url, options);
-        if (response.ok) {
-            const data = await response.json();
-            // Cache the successful response
-            await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
-            return data;
+    const state = await NetInfo.fetch();
+
+    if (state.isConnected) {
+        try {
+            const response = await fetch(url, options);
+            if (response.ok) {
+                const data = await response.json();
+                // Cache the successful response
+                await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+                return data;
+            } else {
+                console.log(`Network request check failed for ${url}. Status: ${response.status} ${response.statusText}`);
+            }
+        } catch (error) {
+            console.log(`Network request failed for ${url}, checking cache... Error:`, error);
         }
-    } catch (error) {
-        console.log(`Network request failed for ${url}, checking cache...`);
+    } else {
+        console.log(`Device offline, skipping network request for ${url}`);
     }
 
     // Fallback to cache if network fails or response not ok
@@ -33,7 +42,7 @@ const fetchWithCache = async (url: string, options?: RequestInit) => {
 
 export const fetchMainboardIPOs = async (page = 1, limit = 10, status?: string, search?: string) => {
     try {
-        let url = `${BASE_URL}/mainboards?page=${page}&limit=${limit}`;
+        let url = `${BASE_URL}/mainboard/mainboards?page=${page}&limit=${limit}`;
         if (status) url += `&status=${status}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
 
@@ -47,7 +56,7 @@ export const fetchMainboardIPOs = async (page = 1, limit = 10, status?: string, 
 
 export const fetchSMEIPOs = async (page = 1, limit = 10, status?: string, search?: string) => {
     try {
-        let url = `${BASE_URL}/sme-ipos?page=${page}&limit=${limit}`;
+        let url = `${BASE_URL}/sme/sme-ipos?page=${page}&limit=${limit}`;
         if (status) url += `&status=${status}`;
         if (search) url += `&search=${encodeURIComponent(search)}`;
 
@@ -61,7 +70,7 @@ export const fetchSMEIPOs = async (page = 1, limit = 10, status?: string, search
 
 export const fetchListedIPOs = async (page = 1, limit = 10) => {
     try {
-        const data = await fetchWithCache(`${BASE_URL}/listed-ipos?page=${page}&limit=${limit}`);
+        const data = await fetchWithCache(`${BASE_URL}/listed/listed-ipos?page=${page}&limit=${limit}`);
         return data.data || [];
     } catch (error) {
         console.error('Error fetching Listed IPOs:', error);
@@ -69,9 +78,8 @@ export const fetchListedIPOs = async (page = 1, limit = 10) => {
     }
 };
 // Auth API
-// Auth API
-// Auth routes are at /api/auth, while BASE_URL is /api/v1. We need to strip /v1 or use a relative path.
-const AUTH_URL = BASE_URL.replace('/v1', '');
+// Auth routes are at /api/auth, and BASE_URL is /api.
+const AUTH_URL = BASE_URL;
 
 export const loginUser = async (email: string, pass: string) => {
     const response = await fetch(`${AUTH_URL}/auth/login`, {
