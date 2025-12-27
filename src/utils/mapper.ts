@@ -64,6 +64,13 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
             refund: moment(backendData.refund_date).format('DD MMM'),
             listing: moment(backendData.listing_date).format('DD MMM')
         },
+        rawDates: {
+            offerStart: backendData.open_date,
+            offerEnd: backendData.close_date,
+            allotment: backendData.allotment_date,
+            refund: backendData.refund_date,
+            listing: backendData.listing_date
+        },
         isAllotmentOut: backendData.isAllotmentOut || false,
         // For debugging: Force links for Zomato if backend has them missing
         rhpUrl: backendData.rhp_pdf || (backendData.companyName === 'Zomato Limited' ? 'https://www.sebi.gov.in/sebi_data/attachdocs/jul-2021/1625546682662.pdf' : undefined),
@@ -86,6 +93,7 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
             price: g.price || 0,
             date: moment(g.date).format('DD MMM'),
             kostak: g.kostak || '-'
-        })) : []
+        })) : [],
+        maxPrice: backendData.max_price || backendData.lot_price || 0
     };
 };

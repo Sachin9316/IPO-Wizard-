@@ -130,7 +130,14 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
 
                         <View style={[styles.statItem, { alignItems: 'flex-end' }]}>
                             <Text style={[styles.statLabel, { color: colors.text }]}>LOT SIZE</Text>
-                            <Text style={[styles.statValue, { color: colors.text }]}>{item.lotSize}</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>
+                                {item.maxPrice && (
+                                    <Text style={{ fontSize: 16, fontWeight: '700' }}>
+                                        ₹{Math.floor(item.maxPrice * parseInt(item.lotSize))}/
+                                    </Text>
+                                )}
+                                {item.lotSize}
+                            </Text>
                         </View>
                     </View>
                 </View>

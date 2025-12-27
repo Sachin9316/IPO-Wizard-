@@ -20,6 +20,13 @@ export interface IPOData {
         refund: string;
         listing: string;
     };
+    rawDates?: {
+        offerStart: string;
+        offerEnd: string;
+        allotment: string;
+        refund: string;
+        listing: string;
+    };
     isAllotmentOut?: boolean;
     rhpUrl?: string;
     drhpUrl?: string;
@@ -42,4 +49,5 @@ export interface IPOData {
         date: string;
         kostak: string;
     }[];
+    maxPrice?: number;
 }
