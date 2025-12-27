@@ -30,7 +30,7 @@ export const SearchScreen = ({ navigation }: any) => {
             setLoading(true);
             try {
                 // Pass ipoType='ALL' to ensure backend understands we want everything (though search param should trigger it too)
-                const response = await api.get('/mainboards', { params: { search: text, limit: 20, ipoType: 'ALL' } });
+                const response = await api.get('/mainboard/mainboards', { params: { search: text, limit: 20, ipoType: 'ALL' } });
                 const mapped = response.data.data.map(mapBackendToFrontend);
                 setResults(mapped);
             } catch (error) {
