@@ -260,8 +260,12 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
 
                     {/* Quick Actions */}
                     <View style={styles.section}>
-                        <Text style={[styles.sectionTitle, { color: colors.text }]}>Quick Actions</Text>
-                        <View style={styles.actionsGrid}>
+                        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 12 }]}>Quick Actions</Text>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.actionsRow}
+                        >
                             {/* Essential Documents */}
                             {item.rhpUrl && (
                                 <ActionIconButton
@@ -350,7 +354,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                     }
                                 }}
                             />
-                        </View>
+                        </ScrollView>
                     </View>
                 </ScrollView>
             )}
@@ -648,16 +652,16 @@ const styles = StyleSheet.create({
     timelineStepDate: {
         fontSize: 13,
     },
-    actionsGrid: {
+    actionsRow: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 16,
+        gap: 8,
         paddingVertical: 8,
+        paddingRight: 16,
     },
     actionIconButton: {
         alignItems: 'center',
-        gap: 8,
-        width: 70,
+        gap: 6,
+        width: 65,
     },
     iconCircle: {
         width: 56,
