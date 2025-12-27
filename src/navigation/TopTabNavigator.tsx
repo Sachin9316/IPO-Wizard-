@@ -9,6 +9,8 @@ export type TopTabParamList = {
     Listed: { type: 'Listed' };
     Alloted: { type: 'Alloted' };
     Watchlist: { type: 'Watchlist' };
+    Open: { type: 'Open' };
+    ClosedListed: { type: 'ClosedListed' };
 };
 
 const Tab = createMaterialTopTabNavigator<TopTabParamList>();
@@ -29,22 +31,28 @@ export const TopTabNavigator = () => {
             }}
         >
             <Tab.Screen
+                name="Open"
+                component={IPOListScreen}
+                initialParams={{ type: 'Open' }}
+                options={{ title: 'Upcoming' }}
+            />
+            <Tab.Screen
                 name="Mainboard"
                 component={IPOListScreen}
                 initialParams={{ type: 'Mainboard' }}
-                options={{ title: 'Upcoming' }}
+                options={{ title: 'Open/Mainboard' }}
             />
             <Tab.Screen
                 name="SME"
                 component={IPOListScreen}
                 initialParams={{ type: 'SME' }}
-                options={{ title: 'SME' }}
+                options={{ title: 'Open/SME' }}
             />
             <Tab.Screen
-                name="Listed"
+                name="ClosedListed"
                 component={IPOListScreen}
-                initialParams={{ type: 'Listed' }}
-                options={{ title: 'Listed' }}
+                initialParams={{ type: 'ClosedListed' }}
+                options={{ title: 'Closed/Listed' }}
             />
 
             <Tab.Screen

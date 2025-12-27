@@ -2,7 +2,7 @@ import { IPOData } from '../types/ipo';
 import moment from 'moment';
 
 export const mapBackendToFrontend = (backendData: any): IPOData => {
-    const isSME = backendData.ipoType === 'SME';
+    const isSME = backendData.ipoType?.toUpperCase() === 'SME';
 
     // Determine status based on dates if not explicitly provided or map status string
     let status: 'Open' | 'Closed' | 'Upcoming' = 'Upcoming';
@@ -33,10 +33,13 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
     if (backendData.gmp && backendData.gmp.length > 0) {
         const latestGMP = backendData.gmp[backendData.gmp.length - 1];
         const price = latestGMP.price || 0;
-        // Calculate percentage if lot_price is available
+
+        // Calculate percentage based on Issue Price (Upper Band)
         let percentage = 0;
-        if (backendData.lot_price) {
-            percentage = (price / backendData.lot_price) * 100;
+        const basePrice = backendData.max_price || backendData.min_price || 0;
+
+        if (basePrice > 0) {
+            percentage = (price / basePrice) * 100;
         }
         gmpValue = `₹${price} (${percentage.toFixed(1)}%)`;
     }
