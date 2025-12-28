@@ -15,8 +15,8 @@ interface IPOListScreenProps {
     type: 'SME' | 'Mainboard' | 'Alloted' | 'Listed' | 'Watchlist' | 'Open' | 'Closed' | 'ClosedListed';
 }
 
-export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps } }) => {
-    const { type } = route.params || { type: 'Mainboard' };
+export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps } }) => {
+    const { type } = route?.params || { type: 'Mainboard' };
     const { colors } = useTheme();
     const navigation = useNavigation<any>();
     const { token, isAuthenticated } = useAuth();
@@ -113,7 +113,9 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                         fetchSMEIPOs(1, 20, 'CLOSED', search),
                         fetchSMEIPOs(1, 20, 'LISTED', search)
                     ]);
-                    fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed];
+                    // Only show IPOs where allotment is still awaited
+                    fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed].filter(ipo => !ipo.isAllotmentOut);
+
                     // Sort by close date (recent first)
                     fetchedData.sort((a, b) => new Date(b.close_date).getTime() - new Date(a.close_date).getTime());
                 }
@@ -126,16 +128,11 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                         fetchSMEIPOs(1, 50, 'CLOSED', search),
                         fetchSMEIPOs(1, 50, 'LISTED', search)
                     ]);
-                    // Merge all closed/listed IPOs
-                    fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed];
+                    // Only show IPOs where allotment is out
+                    fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed].filter(ipo => ipo.isAllotmentOut);
 
-                    // Sort by isAllotmentOut (true first) then by close_date descending (recent first)
-                    fetchedData.sort((a, b) => {
-                        if (a.isAllotmentOut === b.isAllotmentOut) {
-                            return new Date(b.close_date).getTime() - new Date(a.close_date).getTime();
-                        }
-                        return a.isAllotmentOut ? -1 : 1;
-                    });
+                    // Sort by close date (recent first)
+                    fetchedData.sort((a, b) => new Date(b.close_date).getTime() - new Date(a.close_date).getTime());
                 }
             } else if (type === 'Watchlist') {
                 if (isAuthenticated && token) {
@@ -259,20 +256,12 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                 // Currently 'status' from backend is 'Mainboard IPO' which is vague? No, mapper handles status?
                 // Mapper maps status to 'Open' | 'Closed' | 'Listed' | 'Upcoming'.
                 const statusMatch = closedListedFilter.status === 'ALL' ||
-                    (closedListedFilter.status === 'CLOSED' && ipo.status === 'Closed') ||
-                    (closedListedFilter.status === 'LISTED' && ipo.status === 'Listed');
+                    (closedListedFilter.status === 'CLOSED' && ipo.status === 'Closed');
 
-                const allotmentMatch = closedListedFilter.allotment === 'ALL' ||
-                    (closedListedFilter.allotment === 'OUT' && ipo.isAllotmentOut) ||
-                    (closedListedFilter.allotment === 'AWAITED' && !ipo.isAllotmentOut);
-
-                return catMatch && statusMatch && allotmentMatch;
+                return catMatch && statusMatch;
             });
         }
-        if (type !== 'Alloted') return ipos;
-        if (filterType === 'ALL') return ipos;
-        if (filterType === 'OUT') return ipos.filter(ipo => ipo.isAllotmentOut);
-        if (filterType === 'AWAITED') return ipos.filter(ipo => !ipo.isAllotmentOut);
+        if (type === 'Alloted') return ipos;
         return ipos;
         return ipos;
     }, [ipos, filterType, type, closedListedFilter, upcomingFilter]);
@@ -310,7 +299,7 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
             )}
 
             {type === 'Open' && (
-                <View style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'start', gap: 8 }}>
                     {['ALL', 'Mainboard', 'SME'].map((cat) => {
                         const isSelected = upcomingFilter.category.toUpperCase() === (cat === 'Mainboard' ? 'MAINBOARD' : cat.toUpperCase());
                         return (
@@ -331,7 +320,7 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
             )}
 
 
-            {(type !== 'Open') && (
+            {(type === 'ClosedListed' || type === 'Mainboard') && (
                 <View style={{ zIndex: 3001 }}>
                     <TouchableOpacity
                         onPress={() => setShowFilterMenu(!showFilterMenu)}
@@ -346,7 +335,7 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                             borderColor: colors.border
                         }}
                     >
-                        <Filter color={(filterType !== 'ALL' || closedListedFilter.category !== 'ALL' || closedListedFilter.status !== 'ALL') ? colors.primary : colors.text} size={24} />
+                        <Filter color={(closedListedFilter.category !== 'ALL' || closedListedFilter.status !== 'ALL') ? colors.primary : colors.text} size={24} />
                     </TouchableOpacity>
 
                     {showFilterMenu && (
@@ -367,78 +356,41 @@ export const IPOListScreen = ({ route }: { route: { params: IPOListScreenProps }
                             elevation: 5,
                             zIndex: 4000
                         }}>
-                            {type === 'Alloted' ? (
-                                <>
-                                    <TouchableOpacity style={{ paddingVertical: 8 }} onPress={() => { setFilterType('ALL'); setShowFilterMenu(false); }}>
-                                        <Text style={{ color: filterType === 'ALL' ? colors.primary : colors.text }}>All</Text>
+                            <Text style={{ fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Category</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                                {['ALL', 'Mainboard', 'SME'].map((cat) => (
+                                    <TouchableOpacity
+                                        key={cat}
+                                        style={{
+                                            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+                                            backgroundColor: (closedListedFilter.category === (cat === 'Mainboard' ? 'MAINBOARD' : cat)) ? colors.primary + '20' : colors.card,
+                                            borderWidth: 1, borderColor: (closedListedFilter.category === (cat === 'Mainboard' ? 'MAINBOARD' : cat)) ? colors.primary : colors.border
+                                        }}
+                                        onPress={() => setClosedListedFilter(prev => ({ ...prev, category: cat === 'Mainboard' ? 'MAINBOARD' : cat }))}
+                                    >
+                                        <Text style={{ fontSize: 12, color: colors.text }}>{cat}</Text>
                                     </TouchableOpacity>
-                                    <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
-                                    <TouchableOpacity style={{ paddingVertical: 8 }} onPress={() => { setFilterType('OUT'); setShowFilterMenu(false); }}>
-                                        <Text style={{ color: filterType === 'OUT' ? colors.primary : colors.text }}>Allotment Out</Text>
+                                ))}
+                            </View>
+
+                            <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 12 }} />
+
+                            <Text style={{ fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Status</Text>
+                            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                                {['ALL', 'CLOSED'].map((stat) => (
+                                    <TouchableOpacity
+                                        key={stat}
+                                        style={{
+                                            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+                                            backgroundColor: closedListedFilter.status === stat ? colors.primary + '20' : colors.card,
+                                            borderWidth: 1, borderColor: closedListedFilter.status === stat ? colors.primary : colors.border
+                                        }}
+                                        onPress={() => setClosedListedFilter(prev => ({ ...prev, status: stat }))}
+                                    >
+                                        <Text style={{ fontSize: 12, color: colors.text, textTransform: 'capitalize' }}>{stat.toLowerCase()}</Text>
                                     </TouchableOpacity>
-                                    <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
-                                    <TouchableOpacity style={{ paddingVertical: 8 }} onPress={() => { setFilterType('AWAITED'); setShowFilterMenu(false); }}>
-                                        <Text style={{ color: filterType === 'AWAITED' ? colors.primary : colors.text }}>Awaited</Text>
-                                    </TouchableOpacity>
-                                </>
-                            ) : (
-                                <>
-                                    <Text style={{ fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Category</Text>
-                                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                                        {['ALL', 'Mainboard', 'SME'].map((cat) => (
-                                            <TouchableOpacity
-                                                key={cat}
-                                                style={{
-                                                    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-                                                    backgroundColor: (closedListedFilter.category === (cat === 'Mainboard' ? 'MAINBOARD' : cat)) ? colors.primary + '20' : colors.card,
-                                                    borderWidth: 1, borderColor: (closedListedFilter.category === (cat === 'Mainboard' ? 'MAINBOARD' : cat)) ? colors.primary : colors.border
-                                                }}
-                                                onPress={() => setClosedListedFilter(prev => ({ ...prev, category: cat === 'Mainboard' ? 'MAINBOARD' : cat }))}
-                                            >
-                                                <Text style={{ fontSize: 12, color: colors.text }}>{cat}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-
-                                    <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 12 }} />
-
-                                    <Text style={{ fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Status</Text>
-                                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                                        {['ALL', 'CLOSED', 'LISTED'].map((stat) => (
-                                            <TouchableOpacity
-                                                key={stat}
-                                                style={{
-                                                    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-                                                    backgroundColor: closedListedFilter.status === stat ? colors.primary + '20' : colors.card,
-                                                    borderWidth: 1, borderColor: closedListedFilter.status === stat ? colors.primary : colors.border
-                                                }}
-                                                onPress={() => setClosedListedFilter(prev => ({ ...prev, status: stat }))}
-                                            >
-                                                <Text style={{ fontSize: 12, color: colors.text, textTransform: 'capitalize' }}>{stat.toLowerCase()}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-
-                                    <View style={{ height: 1, backgroundColor: colors.border, marginBottom: 12 }} />
-
-                                    <Text style={{ fontWeight: 'bold', color: colors.text, marginBottom: 8 }}>Allotment</Text>
-                                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                                        {['ALL', 'OUT', 'AWAITED'].map((al) => (
-                                            <TouchableOpacity
-                                                key={al}
-                                                style={{
-                                                    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-                                                    backgroundColor: closedListedFilter.allotment === al ? colors.primary + '20' : colors.card,
-                                                    borderWidth: 1, borderColor: closedListedFilter.allotment === al ? colors.primary : colors.border
-                                                }}
-                                                onPress={() => setClosedListedFilter(prev => ({ ...prev, allotment: al }))}
-                                            >
-                                                <Text style={{ fontSize: 12, color: colors.text, textTransform: 'capitalize' }}>{al.toLowerCase()}</Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </>
-                            )}
+                                ))}
+                            </View>
                         </View>
                     )}
                 </View>

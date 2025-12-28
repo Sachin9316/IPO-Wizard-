@@ -42,10 +42,10 @@ export const BottomTabNavigator = () => {
                 component={IPOListScreen}
                 initialParams={{ type: 'Alloted' }}
                 options={{
-                    tabBarLabel: 'Allotment',
+                    tabBarLabel: 'Allotment Out',
                     tabBarIcon: ({ color, size }) => <PieChart color={color} size={size} />,
                     headerShown: true,
-                    header: () => <CustomHeader title="Allotment Status" />
+                    header: () => <CustomHeader title="Allotment Out" />
                 }}
             />
             <Tab.Screen

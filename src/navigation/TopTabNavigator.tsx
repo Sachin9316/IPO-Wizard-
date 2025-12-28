@@ -52,7 +52,7 @@ export const TopTabNavigator = () => {
                 name="ClosedListed"
                 component={IPOListScreen}
                 initialParams={{ type: 'ClosedListed' }}
-                options={{ title: 'Closed/Listed' }}
+                options={{ title: 'Closed/Awaited' }}
             />
 
             <Tab.Screen
