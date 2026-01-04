@@ -1,10 +1,13 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Easing, Share, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Easing, Share, Image, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { ArrowLeft, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy, MoreVertical } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy, MoreVertical, RefreshCw, ExternalLink } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
+import { checkAllotmentStatus, fetchMainboardIPOById } from '../../services/api';
+import { AllotmentStats } from '../../components/allotment/AllotmentStats';
+import { AllotmentResultCard } from '../../components/allotment/AllotmentResultCard';
 
 interface PANData {
     panNumber: string;
@@ -14,15 +17,17 @@ interface PANData {
 interface AllotmentResult {
     panNumber: string;
     name: string;
-    status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED';
+    status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR' | 'UNKNOWN';
     units?: number;
+    message?: string;
 }
 
 export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const { colors } = useTheme();
-    const { ipo } = route.params;
-    const ipoName = ipo?.name;
-    const ipoLogo = ipo?.logoUrl;
+    const { ipo: initialIpo } = route.params;
+    const [ipo, setIpo] = useState(initialIpo);
+    const ipoName = ipo?.name || ipo?.companyName;
+    const ipoLogo = ipo?.logoUrl || ipo?.icon;
     const { user, isAuthenticated } = useAuth();
 
     const [loading, setLoading] = useState(true);
@@ -30,19 +35,77 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const [results, setResults] = useState<AllotmentResult[]>([]);
     const [allPanCount, setAllPanCount] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
+    const [refreshingPans, setRefreshingPans] = useState<Set<string>>(new Set());
+    const [hasError, setHasError] = useState(false);
 
     // Animation Values
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        checkAllotment();
+        // Fetch fresh IPO data to get latest Registrar info
+        const syncIpoData = async () => {
+            if (initialIpo?._id) {
+                try {
+                    const fresh = await fetchMainboardIPOById(initialIpo._id);
+                    if (fresh) {
+                        console.log('Refreshed IPO:', fresh.companyName, fresh.registrarName);
+                        setIpo(prev => ({ ...prev, ...fresh }));
+                    }
+                } catch (e) {
+                    console.log('Failed to sync IPO data', e);
+                }
+            }
+        };
+        syncIpoData();
     }, []);
+
+    useEffect(() => {
+        // Wait for IPO sync if possible, or just run if we trust initial
+        // But better to run checkAllotment AFTER sync?
+        // Typically sync is fast. Let's run checkAllotment but it uses `ipo` state.
+        // If we run it immediately, it might use stale `ipo`.
+        // So we should depend on `ipo`? NO, infinite loop.
+        // We will call checkAllotment inside a separate effect or just run, but checkAllotment reads `ipo` state closure?
+        // No, checkAllotment is defined inside render, so it reads current `ipo` state ref.
+        checkAllotment();
+    }, [ipo.registrarName]); // Re-run if registrarName updates!
+
+    const getRegistrarKey = (name?: string) => {
+        if (!name) return null;
+        const n = name.toUpperCase();
+        if (n.includes('LINK')) return 'LINK_INTIME';
+        if (n.includes('BIGSHARE')) return 'BIGSHARE';
+        if (n.includes('KFIN')) return 'KFINTECH';
+        if (n.includes('MAASHITLA')) return 'MAASHITLA';
+        if (n.includes('SKYLINE')) return 'SKYLINE';
+        if (n.includes('CAMEO')) return 'CAMEO';
+        if (n.includes('PURVA')) return 'PURVA';
+        return null;
+    };
+
+    const handleOpenRegistrar = () => {
+        if (ipo.registrarLink) {
+            const { Linking } = require('react-native');
+            Linking.openURL(ipo.registrarLink);
+        }
+    };
 
     const checkAllotment = async () => {
         setLoading(true);
         setProgress(0);
 
         try {
+            // Use registrarName map, fallback to registrarLink
+            const rawRegistrarName = ipo.registrarName || ipo.registrar || ipo.registrarLink;
+            console.log("DEBUG: ipo string state:", JSON.stringify(ipo));
+            console.log("DEBUG: checkAllotment running with registrarName:", rawRegistrarName);
+
+            const registrarKey = getRegistrarKey(rawRegistrarName);
+            console.log("DEBUG: Derived Registrar Key:", registrarKey);
+
+            // Removed early exit for missing registrarKey to allow showing PANs
+
+
             // 1. Fetch Local PANs
             let localPans: PANData[] = [];
             const stored = await AsyncStorage.getItem('unsaved_pans');
@@ -70,32 +133,59 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 return;
             }
 
-            // 4. Batch Process Logic (Simulating large dataset handling)
-            const BATCH_SIZE = 50;
-            const resultsBuffer: AllotmentResult[] = [];
+            // 4. Call Backend API
 
-            for (let i = 0; i < allPans.length; i += BATCH_SIZE) {
-                const batch = allPans.slice(i, i + BATCH_SIZE);
+            // Extract PAN numbers string array
+            const panNumbers = allPans.map(p => p.panNumber);
 
-                // Simulate Network Delay per batch
-                await new Promise(resolve => setTimeout(resolve, 300));
+            if (!registrarKey) {
+                // Registrar not supported, just show PANs as NOT_APPLIED (or a neutral status if we had one)
+                // User wants to see the PANs if not alloted or applied.
+                // Registrar not supported, just show PANs as UNKNOWN (or a neutral status if we had one)
+                // User wants to see the PANs if not alloted or applied.
+                const mappedResults = allPans.map(p => ({
+                    panNumber: p.panNumber,
+                    name: p.name,
+                    status: 'UNKNOWN' as const, // Default to UNKNOWN so they appear in the list as "Check Manually"
+                    units: 0
+                }));
+                setResults(mappedResults);
+                setLoading(false);
 
-                const batchResults = batch.map(pan => {
-                    const status = getDeterministicStatus(pan.panNumber);
-                    return {
-                        panNumber: pan.panNumber,
-                        name: pan.name,
-                        status: status,
-                        units: status === 'ALLOTTED' ? 1 : 0
-                    };
-                });
-
-                resultsBuffer.push(...batchResults);
-                setProgress(Math.min((i + BATCH_SIZE) / allPans.length, 1));
+                // Trigger Fade In
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    useNativeDriver: true,
+                    easing: Easing.out(Easing.ease)
+                }).start();
+                return;
             }
 
-            setResults(resultsBuffer);
+            // Call API
+            const response = await checkAllotmentStatus(ipoName, registrarKey, panNumbers);
+
+            // Map Response
+            if (response.success && Array.isArray(response.data)) {
+                const mappedResults = response.data.map((res: any) => {
+                    const originalPan = allPans.find(p => p.panNumber === res.pan);
+                    return {
+                        panNumber: res.pan,
+                        name: originalPan ? originalPan.name : "Unknown",
+                        status: res.status, // Backend returns 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR'
+                        units: res.units || 0,
+                        message: res.message
+                    };
+                });
+                setResults(mappedResults);
+            } else {
+                console.error("Invalid API Response", response);
+                // Fallback to error state or empty
+                setResults([]);
+            }
+
             setLoading(false);
+            setHasError(false);
 
             // Trigger Fade In
             Animated.timing(fadeAnim, {
@@ -108,19 +198,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         } catch (error) {
             console.error(error);
             setLoading(false);
+            setHasError(true);
+            // Optional: Show toast or error message
         }
-    };
-
-    const getDeterministicStatus = (pan: string): 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' => {
-        // Simple hash: sum of char codes
-        let sum = 0;
-        for (let i = 0; i < pan.length; i++) {
-            sum += pan.charCodeAt(i);
-        }
-        const outcome = sum % 3;
-        if (outcome === 0) return 'ALLOTTED';
-        if (outcome === 1) return 'NOT_ALLOTTED';
-        return 'NOT_APPLIED';
     };
 
     const filteredResults = results.filter(item =>
@@ -129,6 +209,65 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     );
 
     const [activeMenuPan, setActiveMenuPan] = useState<string | null>(null);
+
+
+
+    const handleRefreshPan = async (item: AllotmentResult) => {
+        console.log("Handle Refresh Pan Triggered for:", item.panNumber);
+        if (refreshingPans.has(item.panNumber)) {
+            console.log("Already refreshing:", item.panNumber);
+            return;
+        }
+
+        const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar);
+        console.log("Registrar Key for Single Check:", registrarKey);
+
+        if (!registrarKey) {
+            Alert.alert(
+                "Unsupported Registrar",
+                `Automatic checking is not supported for ${ipo.registrarName || 'this registrar'}. Please check manually on their website.`
+            );
+            return;
+        }
+
+        setRefreshingPans(prev => new Set(prev).add(item.panNumber));
+        try {
+            console.log("Calling API for single PAN...");
+            const response = await checkAllotmentStatus(ipoName, registrarKey, [item.panNumber]);
+            console.log("Single Refresh Response:", response);
+
+            if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+                const res = response.data[0];
+                setResults(prevResults => prevResults.map(r => {
+                    if (r.panNumber === item.panNumber) {
+                        return {
+                            ...r,
+                            status: res.status,
+                            units: res.units || 0,
+                            message: res.message
+                        };
+                    }
+                    return r;
+                }));
+            } else {
+                console.log("Single refresh returned no valid data");
+                Alert.alert("Info", "No status change found.");
+            }
+        } catch (error) {
+            console.error("Single PAN Refresh Error:", error);
+            Alert.alert("Error", "Failed to refresh status. Please try again.");
+        } finally {
+            setRefreshingPans(prev => {
+                const next = new Set(prev);
+                next.delete(item.panNumber);
+                return next;
+            });
+        }
+    };
+
+    const onRefresh = React.useCallback(async () => {
+        await checkAllotment();
+    }, [ipo.registrarName]);
 
     const handleReportPress = (item: AllotmentResult) => {
         setActiveMenuPan(null);
@@ -161,108 +300,20 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         }
     };
 
+
     const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => {
-        let statusColor, statusText;
-
-        switch (item.status) {
-            case 'ALLOTTED':
-                statusColor = '#15803d'; // Green-700
-                statusText = 'ALLOTTED';
-                break;
-            case 'NOT_ALLOTTED':
-                statusColor = '#b91c1c'; // Red-700
-                statusText = 'NOT ALLOTTED';
-                break;
-            case 'NOT_APPLIED':
-            default:
-                statusColor = '#475569'; // Slate-600
-                statusText = 'NOT APPLIED';
-                break;
-        }
-
-        // Dark mode adjustments
-        if (colors.background !== '#FFFFFF') {
-            if (item.status === 'ALLOTTED') {
-                statusColor = '#4ade80'; // Green-400
-            } else if (item.status === 'NOT_ALLOTTED') {
-                statusColor = '#f87171'; // Red-400
-            } else {
-                statusColor = '#94a3b8'; // Slate-400
-            }
-        }
-
-        const isMenuOpen = activeMenuPan === item.panNumber;
-
         return (
-            <Animated.View style={{
-                opacity: fadeAnim,
-                marginBottom: 10,
-                transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [10 * (index + 1), 0] }) }],
-                zIndex: isMenuOpen ? 100 : 1 // Bring active card to front
-            }}>
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2 }]}>
-                    <View style={styles.cardContent}>
-                        <View style={{ flex: 1, gap: 4 }}>
-                            <Text style={[styles.cardName, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>{item.name}</Text>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <UserIcon size={12} color={colors.text} style={{ opacity: 0.5 }} />
-                                <Text style={[styles.cardPan, { color: colors.text }]}>{item.panNumber}</Text>
-                            </View>
-                        </View>
-
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, zIndex: 10 }}>
-                            <View style={{ alignItems: 'flex-end' }}>
-                                <Text style={[styles.cardStatus, { color: statusColor, fontSize: 13, fontWeight: '700' }]}>{statusText}</Text>
-                                {item.status === 'ALLOTTED' && (
-                                    <Text style={{ fontSize: 11, color: statusColor, marginTop: 2, fontWeight: '500' }}>1 Lot / {item.units} Shares</Text>
-                                )}
-                            </View>
-                            <View>
-                                <TouchableOpacity onPress={() => setActiveMenuPan(isMenuOpen ? null : item.panNumber)} style={{ padding: 4 }}>
-                                    <MoreVertical size={20} color={colors.text} style={{ opacity: 0.5 }} />
-                                </TouchableOpacity>
-
-                                {isMenuOpen && (
-                                    <View style={{
-                                        position: 'absolute',
-                                        top: 30,
-                                        right: 0,
-                                        backgroundColor: colors.card,
-                                        borderRadius: 12,
-                                        padding: 4,
-                                        borderWidth: 1,
-                                        borderColor: colors.border,
-                                        minWidth: 180,
-                                        shadowColor: "#000",
-                                        shadowOffset: { width: 0, height: 4 },
-                                        shadowOpacity: 0.15,
-                                        shadowRadius: 8,
-                                        elevation: 8,
-                                        zIndex: 1000
-                                    }}>
-                                        <TouchableOpacity
-                                            onPress={() => handleShare(item)}
-                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border + '33' }}
-                                        >
-                                            <Share2 size={16} color={colors.primary} />
-                                            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Share Result</Text>
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            onPress={() => handleReportPress(item)}
-                                            style={{ padding: 12 }}
-                                        >
-                                            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '600' }}>Report Status Issue</Text>
-                                            <Text style={{ color: colors.text, fontSize: 9, opacity: 0.5, marginTop: 4 }}>
-                                                Contact us if allotted but facing issues
-                                            </Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            </Animated.View>
+            <AllotmentResultCard
+                item={item}
+                index={index}
+                fadeAnim={fadeAnim}
+                isMenuOpen={activeMenuPan === item.panNumber}
+                refreshing={refreshingPans.has(item.panNumber)}
+                onRefresh={handleRefreshPan}
+                onMenuToggle={() => setActiveMenuPan(activeMenuPan === item.panNumber ? null : item.panNumber)}
+                onShare={handleShare}
+                onReport={handleReportPress}
+            />
         );
     };
 
@@ -325,35 +376,39 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                             </View>
                         </View>
 
-                        <View style={styles.statsContainer}>
-                            <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <Text style={[styles.statCount, { color: colors.primary }]}>{filteredResults.filter(r => r.status !== 'NOT_APPLIED').length}</Text>
-                                <Text style={[styles.statLabel, { color: colors.text, opacity: 0.6 }]}>Applied</Text>
-                            </View>
-                            <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <Text style={[styles.statCount, { color: '#15803d' }]}>{filteredResults.filter(r => r.status === 'ALLOTTED').length}</Text>
-                                <Text style={[styles.statLabel, { color: colors.text, opacity: 0.6 }]}>Allotted</Text>
-                            </View>
-                            <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <Text style={[styles.statCount, { color: '#b91c1c' }]}>{filteredResults.filter(r => r.status === 'NOT_ALLOTTED').length}</Text>
-                                <Text style={[styles.statLabel, { color: colors.text, opacity: 0.6 }]}>Not Allotted</Text>
-                            </View>
-                            <View style={[styles.statBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <Text style={[styles.statCount, { color: colors.text, opacity: 0.6 }]}>{filteredResults.filter(r => r.status === 'NOT_APPLIED').length}</Text>
-                                <Text style={[styles.statLabel, { color: colors.text, opacity: 0.6 }]}>Not Applied</Text>
-                            </View>
-                        </View>
+
+
+
+                        <AllotmentStats results={filteredResults} />
+
 
                         <FlatList
                             data={filteredResults}
                             keyExtractor={item => item.panNumber}
                             renderItem={renderResultCard}
                             contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 40 }}
+                            refreshControl={
+                                <RefreshControl refreshing={loading} onRefresh={onRefresh} colors={[colors.primary]} />
+                            }
                             ListEmptyComponent={
                                 <Text style={{ textAlign: 'center', marginTop: 32, color: colors.text, opacity: 0.6 }}>No results.</Text>
                             }
                         />
 
+                    </View>
+                ) : hasError ? (
+                    <View style={styles.centerContainer}>
+                        <XCircle size={48} color={colors.notification} />
+                        <Text style={[styles.loadingText, { color: colors.text }]}>Unable to check status</Text>
+                        <Text style={{ color: colors.text, opacity: 0.6, marginTop: 4, textAlign: 'center', paddingHorizontal: 32 }}>
+                            We couldn't connect to the server or the registrar is unavailable.
+                        </Text>
+                        <TouchableOpacity
+                            style={{ marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
+                            onPress={checkAllotment}
+                        >
+                            <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Retry</Text>
+                        </TouchableOpacity>
                     </View>
                 ) : (
                     <View style={styles.centerContainer}>
@@ -389,35 +444,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10, paddingVertical: 8,
         borderRadius: 8, borderWidth: 1,
     },
-
-    // Simple Card Styles
-    card: {
-        backgroundColor: '#FFF',
-        borderRadius: 8,
-        marginBottom: 8,
-        padding: 12,
-        // Remove elevation for simpler look, or keep minimal
-        borderWidth: 1,
-        borderColor: '#EEE',
-    },
-    cardContent: {
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'
-    },
-    cardName: { fontSize: 14, fontWeight: 'bold' },
-    cardPan: { fontSize: 12, opacity: 0.6 },
-    cardStatus: { fontSize: 12, fontWeight: 'bold' },
-    shareBtn: {
-        position: 'absolute', top: 8, right: 8, opacity: 0.5
-    },
-
-    statsContainer: {
-        flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12, gap: 8,
-    },
-    statBox: {
-        flex: 1, borderRadius: 8, padding: 8, alignItems: 'center', borderWidth: 1,
-    },
-    statCount: { fontSize: 16, fontWeight: 'bold', marginBottom: 2 },
-    statLabel: { fontSize: 9, fontWeight: '600', textTransform: 'uppercase' },
     ipoIconContainer: {
         width: 40,
         height: 40,

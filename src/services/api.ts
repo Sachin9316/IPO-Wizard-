@@ -40,6 +40,17 @@ const fetchWithCache = async (url: string, options?: RequestInit) => {
     throw new Error('Network request failed and no cache available');
 };
 
+export const fetchMainboardIPOById = async (id: string) => {
+    try {
+        const data = await fetchWithCache(`${BASE_URL}/mainboard/mainboard/${id}`);
+        // Support both direct object or { data: object } format depending on backend controller
+        return data.data || data;
+    } catch (error) {
+        console.error('Error fetching Mainboard IPO by ID:', error);
+        return null;
+    }
+};
+
 export const fetchMainboardIPOs = async (page = 1, limit = 10, status?: string, search?: string) => {
     try {
         let url = `${BASE_URL}/mainboard/mainboards?page=${page}&limit=${limit}`;
@@ -233,5 +244,27 @@ export const api = {
         if (!response.ok) throw new Error('API Request Failed');
         const data = await response.json();
         return { data };
+    }
+};
+
+export const checkAllotmentStatus = async (ipoName: string, registrar: string, panNumbers: string[]) => {
+    try {
+        console.log(`Checking Allotment API -> IPO: "${ipoName}", Reg: "${registrar}", PANs: ${panNumbers.length}`);
+        const response = await fetch(`${BASE_URL}/allotment/check`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ipoName, registrar, panNumbers }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to check allotment status');
+        }
+        return response.json();
+    } catch (error) {
+        console.error('Allotment Check API Error:', error);
+        throw error;
     }
 };

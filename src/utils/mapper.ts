@@ -46,7 +46,6 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
 
     return {
         id: backendData._id || backendData.id,
-        symbol: backendData.bse_code_nse_code,
         name: backendData.companyName,
         type: isSME ? 'SME' : 'Mainboard',
         priceRange: (backendData.min_price && backendData.max_price)
@@ -59,7 +58,7 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
         gmp: gmpValue,
         subscription: `${backendData.subscription?.total || 0}x`,
         lotSize: backendData.lot_size?.toString() || '0',
-        issueSize: '0 Cr', // Backend might need to provide this, or calculate
+        issueSize: backendData.issueSize ? `₹${backendData.issueSize} Cr` : 'N/A',
         dates: {
             offerStart: moment(backendData.open_date).format('DD MMM'),
             offerEnd: moment(backendData.close_date).format('DD MMM'),

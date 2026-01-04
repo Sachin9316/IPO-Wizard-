@@ -127,14 +127,13 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                 {item.logoUrl ? (
                                     <Image source={{ uri: item.logoUrl }} style={styles.logoCompact} resizeMode="contain" />
                                 ) : (
-                                    <Text style={{ color: colors.text, fontSize: 18, fontWeight: 'bold' }}>{item.symbol?.charAt(0)}</Text>
+                                    <Text style={{ color: colors.text, fontSize: 18, fontWeight: 'bold' }}>{item.name.charAt(0)}</Text>
                                 )}
                             </View>
                             <View style={{ flex: 1, justifyContent: 'center' }}>
                                 <Text style={[styles.companyNameCompact, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                                    <Text style={[styles.companySymbolCompact, { color: colors.text }]}>{item.symbol || 'IPO'}</Text>
-                                    <View style={[styles.dotSeparator, { backgroundColor: colors.border }]} />
+
                                     <Text style={[styles.tagTextCompact, { color: colors.primary }]}>{item.type}</Text>
                                     <View style={[styles.dotSeparator, { backgroundColor: colors.border }]} />
                                     <Text style={[styles.tagTextCompact, { color: item.status === 'Open' ? '#4CAF50' : '#888' }]}>{item.status}</Text>
@@ -320,13 +319,6 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
 };
 
 
-
-
-
-
-
-
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -369,8 +361,9 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     logoCompact: {
-        width: '70%',
-        height: '70%',
+        width: '100%',
+        height: '100%',
+        borderRadius: 10,
     },
     companyNameCompact: {
         fontSize: 18,

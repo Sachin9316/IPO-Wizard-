@@ -58,7 +58,7 @@ export const SearchScreen = ({ navigation }: any) => {
             <View style={{ flex: 1, marginLeft: 12 }}>
                 <Text style={[styles.name, { color: colors.text }]}>{item.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-                    <Text style={[styles.symbol, { color: colors.text }]}>{item.symbol}</Text>
+
                     <View style={[styles.badge, { backgroundColor: item.type === 'SME' ? '#F3E5F5' : '#E3F2FD' }]}>
                         <Text style={[styles.badgeText, { color: item.type === 'SME' ? '#7B1FA2' : '#1565C0' }]}>
                             {item.type}

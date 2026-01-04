@@ -1,7 +1,6 @@
 export interface IPOData {
     _id?: string;
     id: string; // Used for frontend keying
-    symbol?: string;
     name: string;
     type: 'Mainboard' | 'SME';
     priceRange: string;

@@ -11,7 +11,6 @@ import { SearchScreen } from '../screens/SearchScreen';
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { LicensesScreen } from '../screens/LicensesScreen';
 import { ReportIssueScreen } from '../screens/ReportIssueScreen';
-
 import { ComparisonScreen } from '../screens/details/ComparisonScreen';
 import { NewsViewerScreen } from '../screens/NewsViewerScreen';
 
