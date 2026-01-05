@@ -1,7 +1,4 @@
-// API Configuration
-// Update BASE_URL based on your environment
+console.log("process.env.EXPO_PUBLIC_BASE_URL", process.env.EXPO_PUBLIC_BASE_URL);
 export const API_CONFIG = {
-    // BASE_URL: 'https://ipo-management-backend.vercel.app/api',
-    // For local development, uncomment the line below:
-    BASE_URL: 'http://10.119.62.227:4000/api',
+    BASE_URL: process.env.EXPO_PUBLIC_BASE_URL + '/api',
 };
