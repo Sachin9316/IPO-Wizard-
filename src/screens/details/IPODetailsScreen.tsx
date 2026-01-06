@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { debounce } from 'lodash';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, TextInput, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, TextInput, Image, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
@@ -52,6 +52,24 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
         }, 800),
         []
     );
+
+    const handleOpenPdf = (url: string, title: string) => {
+        if (!url) {
+            showAlert({ title: 'Error', message: 'URL not available', type: 'error' });
+            return;
+        }
+
+        let finalUrl = url;
+        // Check if URL is a PDF and we are on Android, wrap with Google Docs Viewer
+        // Using a simple check for .pdf extension or if user explicitly knows it's a PDF
+        // Ideally checking headers is better but for now this suffices as per requirement
+        if (Platform.OS === 'android') {
+            finalUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(url)}`;
+        }
+
+        // Navigation to NewsViewer which is essentially a generic WebView viewer
+        navigation.navigate('NewsViewer', { url: finalUrl, title: title });
+    };
 
     const handleToggleWatchlist = () => {
         if (!isAuthenticated || !token) {
@@ -219,7 +237,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                     label="RHP PDF"
                                     backgroundColor={colors.card}
                                     borderColor={colors.border}
-                                    onPress={() => Linking.openURL(item.rhpUrl!).catch(err => showAlert({ title: 'Error', message: 'Could not open link', type: 'error' }))}
+                                    onPress={() => handleOpenPdf(item.rhpUrl!, 'RHP Document')}
                                 />
                             )}
                             {item.drhpUrl && (
@@ -228,7 +246,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                     label="DRHP PDF"
                                     backgroundColor={colors.card}
                                     borderColor={colors.border}
-                                    onPress={() => Linking.openURL(item.drhpUrl!).catch(err => showAlert({ title: 'Error', message: 'Could not open link', type: 'error' }))}
+                                    onPress={() => handleOpenPdf(item.drhpUrl!, 'DRHP Document')}
                                 />
                             )}
 

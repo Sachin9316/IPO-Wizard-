@@ -20,6 +20,7 @@ interface AllotmentResult {
     status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR' | 'UNKNOWN';
     units?: number;
     message?: string;
+    dpId?: string;
 }
 
 export const AllotmentResultScreen = ({ route, navigation }: any) => {
@@ -133,73 +134,105 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 return;
             }
 
-            // 4. Call Backend API
-
-            // Extract PAN numbers string array
-            const panNumbers = allPans.map(p => p.panNumber);
+            // 4. Call Backend API Sequentially
+            // We iterate one by one to give user progress feedback
 
             if (!registrarKey) {
-                // Registrar not supported, just show PANs as NOT_APPLIED (or a neutral status if we had one)
-                // User wants to see the PANs if not alloted or applied.
-                // Registrar not supported, just show PANs as UNKNOWN (or a neutral status if we had one)
-                // User wants to see the PANs if not alloted or applied.
-                const mappedResults = allPans.map(p => ({
+                const mappedResults: AllotmentResult[] = allPans.map(p => ({
                     panNumber: p.panNumber,
                     name: p.name,
-                    status: 'UNKNOWN' as const, // Default to UNKNOWN so they appear in the list as "Check Manually"
-                    units: 0
+                    status: 'UNKNOWN' as const,
+                    units: 0,
+                    message: 'Registrar not supported'
                 }));
                 setResults(mappedResults);
                 setLoading(false);
-
-                // Trigger Fade In
                 Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    useNativeDriver: true,
-                    easing: Easing.out(Easing.ease)
+                    toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.ease)
                 }).start();
                 return;
             }
 
-            // Call API
-            const response = await checkAllotmentStatus(ipoName, registrarKey, panNumbers);
+            // Initialize results with a "PENDING" or "WAITING" state if you want, 
+            // or just built it up. Let's fill with initial "waiting" state.
+            const initialResults: AllotmentResult[] = allPans.map(p => ({
+                panNumber: p.panNumber,
+                name: p.name,
+                status: 'UNKNOWN', // Show as gray/loading
+                units: 0,
+                message: 'Waiting...'
+            }));
+            setResults(initialResults);
 
-            // Map Response
-            if (response.success && Array.isArray(response.data)) {
-                const mappedResults = response.data.map((res: any) => {
-                    const originalPan = allPans.find(p => p.panNumber === res.pan);
-                    return {
-                        panNumber: res.pan,
-                        name: originalPan ? originalPan.name : "Unknown",
-                        status: res.status, // Backend returns 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR'
-                        units: res.units || 0,
-                        message: res.message
-                    };
-                });
-                setResults(mappedResults);
-            } else {
-                console.error("Invalid API Response", response);
-                // Fallback to error state or empty
-                setResults([]);
+            // Trigger Fade In immediately so user sees the list
+            Animated.timing(fadeAnim, {
+                toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.ease)
+            }).start();
+
+            let completedCount = 0;
+
+            for (let i = 0; i < allPans.length; i++) {
+                const p = allPans[i];
+
+                // Update progress "Checking..." for this item? 
+                // We'll rely on the specific card showing 'Waiting...' or we could add a 'loading' indicator to the card.
+
+                try {
+                    const response = await checkAllotmentStatus(ipoName, registrarKey, [p.panNumber]);
+
+                    if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+                        const res = response.data[0];
+                        // Update this specific result in state
+                        setResults(prev => prev.map(item => {
+                            if (item.panNumber === p.panNumber) {
+                                const originalPan = allPans.find(pan => pan.panNumber === p.panNumber);
+                                return {
+                                    ...item,
+                                    status: res.status,
+                                    units: res.units || 0,
+                                    message: res.message,
+                                    // Prefer name from API (cleaned), fallback to local cache, fallback to current
+                                    name: res.name || (originalPan ? originalPan.name : item.name),
+                                    dpId: res.dpId
+                                };
+                            }
+                            return item;
+                        }));
+                    } else {
+                        // Update as Not Found or Error
+                        setResults(prev => prev.map(item => {
+                            if (item.panNumber === p.panNumber) {
+                                return { ...item, status: 'NOT_ALLOTTED', message: 'No record found' };
+                            }
+                            return item;
+                        }));
+                    }
+                } catch (err) {
+                    console.error(`Error checking PAN ${p.panNumber}`, err);
+                    setResults(prev => prev.map(item => {
+                        if (item.panNumber === p.panNumber) {
+                            return { ...item, status: 'ERROR', message: 'Check failed' };
+                        }
+                        return item;
+                    }));
+                }
+
+                completedCount++;
+                setProgress(completedCount / allPans.length);
+
+                // Small delay to prevent UI freeze and rate limiting
+                if (i < allPans.length - 1) {
+                    await new Promise(r => setTimeout(r, 500));
+                }
             }
 
             setLoading(false);
             setHasError(false);
 
-            // Trigger Fade In
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 500,
-                useNativeDriver: true,
-                easing: Easing.out(Easing.ease)
-            }).start();
-
         } catch (error) {
             console.error(error);
             setLoading(false);
             setHasError(true);
-            // Optional: Show toast or error message
         }
     };
 
@@ -244,7 +277,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                             ...r,
                             status: res.status,
                             units: res.units || 0,
-                            message: res.message
+                            message: res.message,
+                            name: res.name || r.name, // Update name if cleaned version returned
+                            dpId: res.dpId
                         };
                     }
                     return r;
