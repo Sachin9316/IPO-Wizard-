@@ -192,11 +192,29 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                         setResults(prev => prev.map(item => {
                             if (item.panNumber === p.panNumber) {
                                 const originalPan = allPans.find(pan => pan.panNumber === p.panNumber);
+
+                                let finalStatus = res.status;
+                                let finalMessage = res.message || '';
+
+                                // Sanitize Technical/Backend Errors
+                                const isTechnicalError =
+                                    finalMessage.includes('browserType.launch') ||
+                                    finalMessage.includes('Executable doesn') ||
+                                    finalMessage.includes('playwright') ||
+                                    finalMessage.includes('/root/.cache/') || // Path usually indicates server error
+                                    finalMessage.includes('Target closed');
+
+                                if (isTechnicalError) {
+                                    console.warn(`Sanitized technical error for PAN ${p.panNumber}: ${finalMessage}`);
+                                    finalStatus = 'UNKNOWN';
+                                    finalMessage = 'Status details unavailable';
+                                }
+
                                 return {
                                     ...item,
-                                    status: res.status,
+                                    status: finalStatus,
                                     units: res.units || 0,
-                                    message: res.message,
+                                    message: finalMessage,
                                     // Prefer name from API (cleaned), fallback to local cache, fallback to current
                                     name: res.name || (originalPan ? originalPan.name : item.name),
                                     dpId: res.dpId
@@ -271,19 +289,37 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
         setRefreshingPans(prev => new Set(prev).add(item.panNumber));
         try {
-            console.log("Calling API for single PAN...");
-            const response = await checkAllotmentStatus(ipoName, registrarKey, [item.panNumber]);
+            console.log("Calling API for single PAN with FORCE refresh...");
+            // Pass forceRefresh = true
+            const response = await checkAllotmentStatus(ipoName, registrarKey, [item.panNumber], true);
             console.log("Single Refresh Response:", response);
 
             if (response.success && Array.isArray(response.data) && response.data.length > 0) {
                 const res = response.data[0];
                 setResults(prevResults => prevResults.map(r => {
                     if (r.panNumber === item.panNumber) {
+                        let finalStatus = res.status;
+                        let finalMessage = res.message || '';
+
+                        // Sanitize Technical/Backend Errors
+                        const isTechnicalError =
+                            finalMessage.includes('browserType.launch') ||
+                            finalMessage.includes('Executable doesn') ||
+                            finalMessage.includes('playwright') ||
+                            finalMessage.includes('/root/.cache/') ||
+                            finalMessage.includes('Target closed');
+
+                        if (isTechnicalError) {
+                            console.warn(`Sanitized technical error for PAN ${item.panNumber}: ${finalMessage}`);
+                            finalStatus = 'UNKNOWN';
+                            finalMessage = 'Status details unavailable';
+                        }
+
                         return {
                             ...r,
-                            status: res.status,
+                            status: finalStatus,
                             units: res.units || 0,
-                            message: res.message,
+                            message: finalMessage,
                             name: res.name || r.name, // Update name if cleaned version returned
                             dpId: res.dpId
                         };

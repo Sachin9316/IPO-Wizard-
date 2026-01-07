@@ -54,9 +54,12 @@ export const AllotmentResultCard = ({
             statusText = 'NOT APPLIED';
             break;
         case 'CHECKING':
-        case 'WAITING':
             statusColor = '#d97706'; // Amber-600
             statusText = 'CHECKING...';
+            break;
+        case 'WAITING':
+            statusColor = '#475569'; // Slate-600 (Same as NOT_APPLIED)
+            statusText = 'NOT APPLIED';
             break;
         case 'UNKNOWN':
         default:
@@ -101,7 +104,7 @@ export const AllotmentResultCard = ({
                             onPress={() => onRefresh(item)}
                             disabled={refreshing || item.status === 'CHECKING' || item.status === 'WAITING'}
                         >
-                            {refreshing || item.status === 'CHECKING' || item.status === 'WAITING' ? (
+                            {refreshing || item.status === 'CHECKING' ? (
                                 <ActivityIndicator size="small" color={statusColor} />
                             ) : (
                                 <>

@@ -263,15 +263,15 @@ export const api = {
     }
 };
 
-export const checkAllotmentStatus = async (ipoName: string, registrar: string, panNumbers: string[]) => {
+export const checkAllotmentStatus = async (ipoName: string, registrar: string, panNumbers: string[], forceRefresh: boolean = false) => {
     try {
-        console.log(`Checking Allotment API -> IPO: "${ipoName}", Reg: "${registrar}", PANs: ${panNumbers.length}`);
+        console.log(`Checking Allotment API -> IPO: "${ipoName}", Reg: "${registrar}", PANs: ${panNumbers.length}, Force: ${forceRefresh}`);
         const response = await fetch(`${BASE_URL}/allotment/check`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ ipoName, registrar, panNumbers }),
+            body: JSON.stringify({ ipoName, registrar, panNumbers, forceRefresh }),
         });
 
         if (!response.ok) {
