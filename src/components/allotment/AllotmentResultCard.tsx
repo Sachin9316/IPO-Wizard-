@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { User as UserIcon, MoreVertical, Share2 } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { usePreferences } from '../../context/PreferencesContext';
 
 interface AllotmentResult {
     panNumber: string;
@@ -35,6 +36,7 @@ export const AllotmentResultCard = ({
     onReport
 }: AllotmentResultCardProps) => {
     const { colors } = useTheme();
+    const { isPanMasked } = usePreferences();
 
     let statusColor, statusText;
 
@@ -87,7 +89,9 @@ export const AllotmentResultCard = ({
                         <Text style={[styles.cardName, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>{item.name}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                             <UserIcon size={12} color={colors.text} style={{ opacity: 0.5 }} />
-                            <Text style={[styles.cardPan, { color: colors.text }]}>{item.panNumber}</Text>
+                            <Text style={[styles.cardPan, { color: colors.text }]}>
+                                {isPanMasked ? '******' + item.panNumber.slice(-4) : item.panNumber}
+                            </Text>
                         </View>
                     </View>
 

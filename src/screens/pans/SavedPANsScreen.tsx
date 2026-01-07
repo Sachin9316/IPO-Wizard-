@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addUserPAN, deleteUserPAN } from '../../services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUI } from '../../context/UIContext';
+import { usePreferences } from '../../context/PreferencesContext';
 
 interface PANData {
     id: string; // For local: timestamp. For cloud: _id or panNumber? API uses panNumber for delete.
@@ -21,6 +22,7 @@ export const SavedPANsScreen = () => {
     const { user, isAuthenticated, token, refreshProfile } = useAuth();
     const { showAlert, showToast } = useUI();
     const navigation = useNavigation<any>();
+    const { isPanMasked } = usePreferences();
 
     const [modalVisible, setModalVisible] = useState(false);
     const [editingPAN, setEditingPAN] = useState<PANData | null>(null);
@@ -184,7 +186,9 @@ export const SavedPANsScreen = () => {
                 </View>
                 <View style={styles.panInfo}>
                     <Text style={[styles.panNumber, { color: colors.text }]}>{item.name}</Text>
-                    <Text style={[styles.panName, { color: colors.text, opacity: 0.7 }]}>{item.panNumber}</Text>
+                    <Text style={[styles.panName, { color: colors.text, opacity: 0.7 }]}>
+                        {isPanMasked ? '******' + item.panNumber.slice(-4) : item.panNumber}
+                    </Text>
 
                     {isCloud && (
                         <View style={styles.verifiedTag}>

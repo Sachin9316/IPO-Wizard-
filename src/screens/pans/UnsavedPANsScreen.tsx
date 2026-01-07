@@ -9,6 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { addUserPAN } from '../../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useUI } from '../../context/UIContext';
+import { usePreferences } from '../../context/PreferencesContext';
 
 interface PANData {
     id: string;
@@ -20,6 +21,7 @@ export const UnsavedPANsScreen = () => {
     const { colors } = useTheme();
     const { isAuthenticated, token, refreshProfile } = useAuth();
     const { showAlert, showToast } = useUI();
+    const { isPanMasked } = usePreferences();
     const [modalVisible, setModalVisible] = useState(false);
     const [editingPAN, setEditingPAN] = useState<PANData | null>(null);
     const [pans, setPans] = useState<PANData[]>([]);
@@ -149,7 +151,7 @@ export const UnsavedPANsScreen = () => {
                 <View style={styles.panInfo}>
                     <Text style={[styles.panNumber, { color: colors.text }]}>{item.name || "Unsaved Local PAN"}</Text>
                     <Text style={[styles.panSubtext, { color: colors.text, opacity: 0.5 }]}>
-                        {item.panNumber}
+                        {isPanMasked ? '******' + item.panNumber.slice(-4) : item.panNumber}
                     </Text>
                     {isAuthenticated && (
                         <TouchableOpacity style={styles.syncLink} onPress={() => handleSync(item)}>

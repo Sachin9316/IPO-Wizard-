@@ -7,6 +7,7 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
 import { UIProvider } from './src/context/UIContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
+import { PreferencesProvider } from './src/context/PreferencesContext';
 
 const AppContent = () => {
     const { theme, colors } = useTheme();
@@ -51,11 +52,13 @@ export default function App() {
     return (
         <SafeAreaProvider>
             <ThemeProvider>
-                <UIProvider>
-                    <AuthProvider>
-                        <AppContent />
-                    </AuthProvider>
-                </UIProvider>
+                <PreferencesProvider>
+                    <UIProvider>
+                        <AuthProvider>
+                            <AppContent />
+                        </AuthProvider>
+                    </UIProvider>
+                </PreferencesProvider>
             </ThemeProvider>
         </SafeAreaProvider>
     );

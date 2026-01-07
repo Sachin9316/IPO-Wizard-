@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Switch } from 're
 import { User, Mail, LogOut, CheckCircle, ShieldCheck, FileText, Moon, Sun } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { useUI } from '../../context/UIContext';
+import { usePreferences } from '../../context/PreferencesContext';
 
 interface UserProfileViewProps {
     user: any;
@@ -21,6 +22,7 @@ export const UserProfileView = ({
 }: UserProfileViewProps) => {
     const { colors } = useTheme();
     const { showAlert } = useUI();
+    const { isPanMasked, togglePanMask } = usePreferences();
 
     const handleLogout = () => {
         showAlert({
@@ -85,6 +87,19 @@ export const UserProfileView = ({
                     onValueChange={toggleTheme}
                     trackColor={{ false: colors.border, true: colors.primary + '80' }}
                     thumbColor={theme === 'dark' ? colors.primary : '#f4f3f4'}
+                />
+            </View>
+
+            <View style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'space-between' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                    <ShieldCheck size={20} color={colors.primary} />
+                    <Text style={[styles.menuButtonText, { color: colors.text }]}>Mask PAN</Text>
+                </View>
+                <Switch
+                    value={isPanMasked}
+                    onValueChange={togglePanMask}
+                    trackColor={{ false: colors.border, true: colors.primary + '80' }}
+                    thumbColor={isPanMasked ? colors.primary : '#f4f3f4'}
                 />
             </View>
 
