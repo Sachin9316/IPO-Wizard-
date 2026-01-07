@@ -17,7 +17,7 @@ interface PANData {
 interface AllotmentResult {
     panNumber: string;
     name: string;
-    status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR' | 'UNKNOWN';
+    status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR' | 'UNKNOWN' | 'CHECKING' | 'WAITING';
     units?: number;
     message?: string;
     dpId?: string;
@@ -74,7 +74,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const getRegistrarKey = (name?: string) => {
         if (!name) return null;
         const n = name.toUpperCase();
-        if (n.includes('LINK')) return 'LINK_INTIME';
+        if (n.includes('LINK') || n.includes('MUFG')) return 'LINK_INTIME';
         if (n.includes('BIGSHARE')) return 'BIGSHARE';
         if (n.includes('KFIN')) return 'KFINTECH';
         if (n.includes('MAASHITLA')) return 'MAASHITLA';
@@ -158,7 +158,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             const initialResults: AllotmentResult[] = allPans.map(p => ({
                 panNumber: p.panNumber,
                 name: p.name,
-                status: 'UNKNOWN', // Show as gray/loading
+                status: 'WAITING', // Show as gray/loading
                 units: 0,
                 message: 'Waiting...'
             }));
@@ -176,6 +176,11 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
                 // Update progress "Checking..." for this item? 
                 // We'll rely on the specific card showing 'Waiting...' or we could add a 'loading' indicator to the card.
+
+                // Set current item to CHECKING
+                setResults(prev => prev.map(item =>
+                    item.panNumber === p.panNumber ? { ...item, status: 'CHECKING', message: 'Checking...' } : item
+                ));
 
                 try {
                     const response = await checkAllotmentStatus(ipoName, registrarKey, [p.panNumber]);

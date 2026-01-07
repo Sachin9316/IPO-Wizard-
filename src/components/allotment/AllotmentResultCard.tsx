@@ -6,7 +6,7 @@ import { useTheme } from '../../theme/ThemeContext';
 interface AllotmentResult {
     panNumber: string;
     name: string;
-    status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR' | 'UNKNOWN';
+    status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR' | 'UNKNOWN' | 'CHECKING' | 'WAITING';
     units?: number;
     message?: string;
 }
@@ -50,6 +50,11 @@ export const AllotmentResultCard = ({
         case 'NOT_APPLIED':
             statusColor = '#475569'; // Slate-600
             statusText = 'NOT APPLIED';
+            break;
+        case 'CHECKING':
+        case 'WAITING':
+            statusColor = '#d97706'; // Amber-600
+            statusText = 'CHECKING...';
             break;
         case 'UNKNOWN':
         default:
