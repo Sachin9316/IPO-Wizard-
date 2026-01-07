@@ -163,6 +163,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 message: 'Waiting...'
             }));
             setResults(initialResults);
+            setLoading(false); // <--- SHOW LIST IMMEDIATELY
 
             // Trigger Fade In immediately so user sees the list
             Animated.timing(fadeAnim, {
@@ -207,7 +208,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                         // Update as Not Found or Error
                         setResults(prev => prev.map(item => {
                             if (item.panNumber === p.panNumber) {
-                                return { ...item, status: 'NOT_ALLOTTED', message: 'No record found' };
+                                return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
                             }
                             return item;
                         }));
@@ -257,7 +258,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             return;
         }
 
-        const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar);
+        const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar || ipo.registrarLink);
         console.log("Registrar Key for Single Check:", registrarKey);
 
         if (!registrarKey) {
@@ -290,8 +291,11 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                     return r;
                 }));
             } else {
-                console.log("Single refresh returned no valid data");
-                Alert.alert("Info", "No status change found.");
+                console.log("Single refresh returned no valid data (Status remains same/Not Found)");
+                // User requested no dialog, just silent update/completion.
+                // We could explicitly set to NOT_APPLIED if we wanted to enforce it, 
+                // but if it was already NOT_APPLIED, doing nothing is fine.
+                // The loader will stop in finally block.
             }
         } catch (error) {
             console.error("Single PAN Refresh Error:", error);
@@ -427,6 +431,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                             keyExtractor={item => item.panNumber}
                             renderItem={renderResultCard}
                             contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 40 }}
+                            onScrollBeginDrag={() => {
+                                if (activeMenuPan) setActiveMenuPan(null);
+                            }}
                             refreshControl={
                                 <RefreshControl refreshing={loading} onRefresh={onRefresh} colors={[colors.primary]} />
                             }

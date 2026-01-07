@@ -99,9 +99,9 @@ export const AllotmentResultCard = ({
                         <TouchableOpacity
                             style={{ alignItems: 'flex-end' }}
                             onPress={() => onRefresh(item)}
-                            disabled={refreshing}
+                            disabled={refreshing || item.status === 'CHECKING' || item.status === 'WAITING'}
                         >
-                            {refreshing ? (
+                            {refreshing || item.status === 'CHECKING' || item.status === 'WAITING' ? (
                                 <ActivityIndicator size="small" color={statusColor} />
                             ) : (
                                 <>
@@ -126,7 +126,7 @@ export const AllotmentResultCard = ({
                                 position: 'absolute',
                                 top: 30,
                                 right: 0,
-                                backgroundColor: colors.card,
+                                backgroundColor: (colors.background === '#000000' || colors.background === '#121212') ? '#333333' : colors.card,
                                 borderRadius: 12,
                                 padding: 4,
                                 borderWidth: 1,
@@ -139,6 +139,16 @@ export const AllotmentResultCard = ({
                                 elevation: 8,
                                 zIndex: 1000
                             }}>
+                                <TouchableOpacity
+                                    onPress={onMenuToggle}
+                                    style={{
+                                        position: 'absolute',
+                                        top: -3000, bottom: -3000, left: -3000, right: -3000,
+                                        zIndex: -1,
+                                        backgroundColor: 'transparent'
+                                    }}
+                                    activeOpacity={1}
+                                />
                                 <TouchableOpacity
                                     onPress={() => onShare(item)}
                                     style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border + '33' }}
