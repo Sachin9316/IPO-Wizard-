@@ -183,8 +183,8 @@ export const SavedPANsScreen = () => {
                     <CreditCard size={24} color={isCloud ? colors.primary : '#FF9800'} />
                 </View>
                 <View style={styles.panInfo}>
-                    <Text style={[styles.panNumber, { color: colors.text }]}>{item.panNumber}</Text>
-                    <Text style={[styles.panName, { color: colors.text, opacity: 0.7 }]}>{item.name}</Text>
+                    <Text style={[styles.panNumber, { color: colors.text }]}>{item.name}</Text>
+                    <Text style={[styles.panName, { color: colors.text, opacity: 0.7 }]}>{item.panNumber}</Text>
 
                     {isCloud && (
                         <View style={styles.verifiedTag}>

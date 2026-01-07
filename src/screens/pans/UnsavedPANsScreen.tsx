@@ -147,9 +147,9 @@ export const UnsavedPANsScreen = () => {
                     <CreditCard size={24} color="#FF9800" />
                 </View>
                 <View style={styles.panInfo}>
-                    <Text style={[styles.panNumber, { color: colors.text }]}>{item.panNumber}</Text>
+                    <Text style={[styles.panNumber, { color: colors.text }]}>{item.name || "Unsaved Local PAN"}</Text>
                     <Text style={[styles.panSubtext, { color: colors.text, opacity: 0.5 }]}>
-                        {item.name || "Unsaved Local PAN"}
+                        {item.panNumber}
                     </Text>
                     {isAuthenticated && (
                         <TouchableOpacity style={styles.syncLink} onPress={() => handleSync(item)}>
