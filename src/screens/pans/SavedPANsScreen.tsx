@@ -6,7 +6,7 @@ import { AddPANModal } from '../../components/AddPANModal';
 import { Plus, CreditCard, Trash2, Edit, Cloud, CloudOff, LogIn } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { addUserPAN, deleteUserPAN } from '../../services/api';
+import { addUserPAN, deleteUserPAN, updateUserPAN } from '../../services/api'; // Import updateUserPAN
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUI } from '../../context/UIContext';
 import { usePreferences } from '../../context/PreferencesContext';
@@ -95,20 +95,28 @@ export const SavedPANsScreen = () => {
         const panNumber = data.panNumber.toUpperCase();
 
         if (isAuthenticated && token) {
-            // Cloud add
+            // Cloud Logic
             setIsLoading(true);
             try {
-                await addUserPAN(token, { panNumber, name });
-                showToast({ message: "PAN added to your account", type: 'success' });
+                if (editingPAN) {
+                    // Update existing
+                    await updateUserPAN(token, panNumber, { name });
+                    showToast({ message: "PAN updated successfully", type: 'success' });
+                } else {
+                    // Add new
+                    await addUserPAN(token, { panNumber, name });
+                    showToast({ message: "PAN added to your account", type: 'success' });
+                }
                 setModalVisible(false);
-                if (refreshProfile) refreshProfile(); // Refresh after add
+                setEditingPAN(null); // Reset editing state
+                if (refreshProfile) refreshProfile(); // Refresh after add/update
             } catch (e: any) {
                 showAlert({ title: "Error", message: e.message, type: 'error' });
             } finally {
                 setIsLoading(false);
             }
         } else {
-            // Local add
+            // Local Logic
             if (editingPAN) {
                 const updated = localPans.map(p => p.id === editingPAN.id ? { ...p, panNumber, name } : p);
                 setLocalPans(updated);
@@ -130,12 +138,8 @@ export const SavedPANsScreen = () => {
     };
 
     const handleEditPAN = (pan: PANData) => {
-        if (isAuthenticated) {
-            showAlert({ title: "Info", message: "To edit a verified PAN, please remove and add it again.", type: 'info' });
-        } else {
-            setEditingPAN(pan);
-            setModalVisible(true);
-        }
+        setEditingPAN(pan);
+        setModalVisible(true);
     };
 
     const handleDeletePAN = async (id: string, panNumber: string, isCloud: boolean) => {
@@ -182,7 +186,7 @@ export const SavedPANsScreen = () => {
         <View style={[styles.panCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <View style={styles.panCardContent}>
                 <View style={[styles.iconContainer, { backgroundColor: isCloud ? colors.primary + '20' : '#FF980020' }]}>
-                    <CreditCard size={24} color={isCloud ? colors.primary : '#FF9800'} />
+                    <CreditCard size={20} color={isCloud ? colors.primary : '#FF9800'} />
                 </View>
                 <View style={styles.panInfo}>
                     <Text style={[styles.panNumber, { color: colors.text }]}>{item.name}</Text>
@@ -192,14 +196,14 @@ export const SavedPANsScreen = () => {
 
                     {isCloud && (
                         <View style={styles.verifiedTag}>
-                            <Cloud size={12} color={colors.primary} />
-                            <Text style={{ fontSize: 10, color: colors.primary, marginLeft: 4 }}>Saved</Text>
+                            <Cloud size={10} color={colors.primary} />
+                            <Text style={{ fontSize: 9, color: colors.primary, marginLeft: 4 }}>Saved</Text>
                         </View>
                     )}
 
                     {!isCloud && isAuthenticated && (
                         <TouchableOpacity style={styles.syncLink} onPress={() => handleSyncPAN(item)}>
-                            <Text style={{ fontSize: 12, color: '#FF9800', fontWeight: 'bold' }}>Not Saved • Tap to Sync</Text>
+                            <Text style={{ fontSize: 10, color: '#FF9800', fontWeight: 'bold' }}>Not Saved • Tap to Sync</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -207,19 +211,17 @@ export const SavedPANsScreen = () => {
             <View style={styles.actionButtons}>
                 {!isCloud && isAuthenticated && (
                     <TouchableOpacity style={[styles.editBtn, { marginRight: 4 }]} onPress={() => handleSyncPAN(item)}>
-                        <Cloud size={20} color={colors.primary} />
+                        <Cloud size={16} color={colors.primary} />
                     </TouchableOpacity>
                 )}
-                {!isCloud && !isAuthenticated && (
-                    <TouchableOpacity style={styles.editBtn} onPress={() => handleEditPAN(item)}>
-                        <Edit size={20} color={colors.primary} />
-                    </TouchableOpacity>
-                )}
+                <TouchableOpacity style={styles.editBtn} onPress={() => handleEditPAN(item)}>
+                    <Edit size={16} color={colors.primary} />
+                </TouchableOpacity>
                 <TouchableOpacity
                     style={styles.deleteBtn}
                     onPress={() => handleDeletePAN(item.id, item.panNumber, isCloud)}
                 >
-                    <Trash2 size={20} color="#F44336" />
+                    <Trash2 size={16} color="#F44336" />
                 </TouchableOpacity>
             </View>
         </View>
@@ -298,14 +300,20 @@ export const SavedPANsScreen = () => {
 
             <TouchableOpacity
                 style={[styles.fab, { backgroundColor: colors.primary }]}
-                onPress={() => setModalVisible(true)}
+                onPress={() => {
+                    setEditingPAN(null);
+                    setModalVisible(true);
+                }}
             >
                 <Plus size={28} color="#fff" />
             </TouchableOpacity>
 
             <AddPANModal
                 visible={modalVisible}
-                onClose={() => setModalVisible(false)}
+                onClose={() => {
+                    setModalVisible(false);
+                    setEditingPAN(null);
+                }}
                 onSubmit={handleAddPAN}
                 requireName={true}
                 editData={editingPAN}
@@ -323,25 +331,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
         padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ccc', borderStyle: 'dashed'
     },
-    sectionTitle: { fontSize: 14, fontWeight: 'bold', marginBottom: 10, textTransform: 'uppercase', opacity: 0.7 },
+    sectionTitle: { fontSize: 12, fontWeight: 'bold', marginBottom: 8, textTransform: 'uppercase', opacity: 0.7 },
     panCard: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        padding: 16, borderRadius: 12, borderWidth: 1, marginBottom: 12,
-        elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+        padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 8,
+        elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1, shadowRadius: 2,
     },
     panCardContent: { flexDirection: 'row', alignItems: 'center', flex: 1 },
     iconContainer: {
-        width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 12,
+        width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginRight: 10,
     },
     panInfo: { flex: 1 },
-    panNumber: { fontSize: 16, fontWeight: 'bold', marginBottom: 4 },
-    panName: { fontSize: 14 },
-    verifiedTag: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-    syncLink: { marginTop: 4 },
-    actionButtons: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    editBtn: { padding: 8 },
-    deleteBtn: { padding: 8 },
+    panNumber: { fontSize: 14, fontWeight: 'bold', marginBottom: 2 },
+    panName: { fontSize: 12 },
+    verifiedTag: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+    syncLink: { marginTop: 2 },
+    actionButtons: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    editBtn: { padding: 6 },
+    deleteBtn: { padding: 6 },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', padding: 32, marginTop: 40 },
     emptyText: { fontSize: 18, fontWeight: '600', marginTop: 16 },
     fab: {

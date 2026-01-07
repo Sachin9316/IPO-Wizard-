@@ -93,14 +93,16 @@ export const AddPANModal = ({ visible, onClose, onSubmit, requireName = true, ed
                                 style={[
                                     styles.input,
                                     {
-                                        backgroundColor: colors.card,
-                                        color: colors.text,
-                                        borderColor: errors.panNumber ? '#F44336' : colors.border
+                                        backgroundColor: editData ? colors.card + '80' : colors.card,
+                                        color: editData ? colors.text + '80' : colors.text,
+                                        borderColor: errors.panNumber ? '#F44336' : colors.border,
+                                        opacity: editData ? 0.7 : 1
                                     }
                                 ]}
                                 placeholder="ABCDE1234F"
                                 placeholderTextColor={colors.text + '60'}
                                 value={panNumber}
+                                editable={!editData}
                                 onChangeText={(text) => {
                                     setPanNumber(text.toUpperCase());
                                     if (errors.panNumber) setErrors({ ...errors, panNumber: '' });

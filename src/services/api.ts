@@ -162,6 +162,22 @@ export const deleteUserPAN = async (token: string, panNumber: string) => {
     return response.json();
 };
 
+export const updateUserPAN = async (token: string, panNumber: string, data: { name: string }) => {
+    const response = await fetch(`${AUTH_URL}/users/profile/pan/${panNumber}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Failed to update PAN');
+    }
+    return response.json();
+};
+
 export const fetchWatchlist = async (token: string) => {
     try {
         const data = await fetchWithCache(`${AUTH_URL}/users/profile/watchlist`, {
