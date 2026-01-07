@@ -77,7 +77,7 @@ export const UserProfileView = ({
 
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Preferences</Text>
 
-            <View style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'space-between' }]}>
+            <View style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'space-between', paddingVertical: 12 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                     {theme === 'dark' ? <Moon size={20} color={colors.primary} /> : <Sun size={20} color={colors.primary} />}
                     <Text style={[styles.menuButtonText, { color: colors.text }]}>Dark Mode</Text>
@@ -90,7 +90,7 @@ export const UserProfileView = ({
                 />
             </View>
 
-            <View style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'space-between' }]}>
+            <View style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'space-between', paddingVertical: 12 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                     <ShieldCheck size={20} color={colors.primary} />
                     <Text style={[styles.menuButtonText, { color: colors.text }]}>Mask PAN</Text>
