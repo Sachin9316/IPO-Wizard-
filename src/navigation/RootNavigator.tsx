@@ -33,7 +33,9 @@ export const RootNavigator = () => {
     return (
         <Stack.Navigator
             screenOptions={{
-                contentStyle: { backgroundColor: colors.background }
+                contentStyle: { backgroundColor: colors.background },
+                animation: 'slide_from_right',
+                headerShown: false
             }}
         >
             <Stack.Screen

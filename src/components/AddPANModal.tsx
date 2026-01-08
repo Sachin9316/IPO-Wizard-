@@ -10,9 +10,10 @@ interface AddPANModalProps {
     onSubmit: (data: { panNumber: string; name?: string }) => void;
     requireName?: boolean;
     editData?: { panNumber: string; name?: string } | null;
+    title?: string;
 }
 
-export const AddPANModal = ({ visible, onClose, onSubmit, requireName = true, editData = null }: AddPANModalProps) => {
+export const AddPANModal = ({ visible, onClose, onSubmit, requireName = true, editData = null, title }: AddPANModalProps) => {
     const { colors } = useTheme();
     const [panNumber, setPanNumber] = useState('');
     const [name, setName] = useState('');
@@ -79,7 +80,7 @@ export const AddPANModal = ({ visible, onClose, onSubmit, requireName = true, ed
                 <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
                     <View style={[styles.header, { borderBottomColor: colors.border }]}>
                         <Text style={[styles.headerTitle, { color: colors.text }]}>
-                            {editData ? 'Edit' : 'Add'} {requireName ? 'Saved' : 'Unsaved'} PAN
+                            {editData ? 'Edit' : 'Add'} PAN
                         </Text>
                         <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
                             <X color={colors.text} size={24} />

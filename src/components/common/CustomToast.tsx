@@ -23,12 +23,12 @@ export const CustomToast: React.FC<ToastOptions & { onClose: () => void }> = ({
             Animated.timing(translateY, {
                 toValue: 20,
                 duration: 400,
-                useNativeDriver: true,
+                useNativeDriver: false,
             }),
             Animated.timing(opacity, {
                 toValue: 1,
                 duration: 400,
-                useNativeDriver: true,
+                useNativeDriver: false,
             })
         ]).start();
 
@@ -38,12 +38,12 @@ export const CustomToast: React.FC<ToastOptions & { onClose: () => void }> = ({
                 Animated.timing(translateY, {
                     toValue: -100,
                     duration: 400,
-                    useNativeDriver: true,
+                    useNativeDriver: false,
                 }),
                 Animated.timing(opacity, {
                     toValue: 0,
                     duration: 400,
-                    useNativeDriver: true,
+                    useNativeDriver: false,
                 })
             ]).start();
         }, 2500);

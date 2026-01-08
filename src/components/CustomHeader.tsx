@@ -2,12 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { useUI } from '../context/UIContext';
-import { Search, Moon, Sun } from 'lucide-react-native';
+import { Search } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-export const CustomHeader = ({ title, showActions = true }: { title: string; showActions?: boolean }) => {
-    const { theme, toggleTheme, colors } = useTheme();
+export const CustomHeader = ({ title, showActions = true, showSearch = true }: { title: string; showActions?: boolean; showSearch?: boolean }) => {
+    const { colors } = useTheme();
     const { headerFilter, setHeaderFilter } = useUI();
     const navigation = useNavigation<any>();
     const insets = useSafeAreaInsets();
@@ -58,13 +58,11 @@ export const CustomHeader = ({ title, showActions = true }: { title: string; sho
                             </TouchableOpacity>
                         </View>
 
-                        <TouchableOpacity onPress={toggleTheme} style={styles.iconButton}>
-                            {theme === 'dark' ? (
-                                <Sun color={colors.text} size={24} />
-                            ) : (
-                                <Moon color={colors.text} size={24} />
-                            )}
-                        </TouchableOpacity>
+                        {showSearch && (
+                            <TouchableOpacity onPress={() => navigation.navigate('Search')} style={styles.iconButton}>
+                                <Search color={colors.text} size={24} />
+                            </TouchableOpacity>
+                        )}
                     </View>
                 )}
             </View>

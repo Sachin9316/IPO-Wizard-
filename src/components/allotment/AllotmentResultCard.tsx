@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
-import { User as UserIcon, MoreVertical, Share2 } from 'lucide-react-native';
+import { User as UserIcon, MoreVertical, Share2, Cloud, Smartphone } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { usePreferences } from '../../context/PreferencesContext';
 
@@ -10,6 +10,7 @@ interface AllotmentResult {
     status: 'ALLOTTED' | 'NOT_ALLOTTED' | 'NOT_APPLIED' | 'ERROR' | 'UNKNOWN' | 'CHECKING' | 'WAITING';
     units?: number;
     message?: string;
+    source?: 'LOCAL' | 'CLOUD';
 }
 
 interface AllotmentResultCardProps {
@@ -82,7 +83,7 @@ export const AllotmentResultCard = ({
     return (
         <Animated.View style={{
             opacity: fadeAnim,
-            marginBottom: 10,
+            marginBottom: 12,
             transform: [{ translateY: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [10 * (index + 1), 0] }) }],
             zIndex: isMenuOpen ? 100 : 1 // Bring active card to front
         }}>
@@ -91,7 +92,11 @@ export const AllotmentResultCard = ({
                     <View style={{ flex: 1, gap: 4 }}>
                         <Text style={[styles.cardName, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>{item.name}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <UserIcon size={12} color={colors.text} style={{ opacity: 0.5 }} />
+                            {item.source === 'CLOUD' ? (
+                                <Cloud size={12} color={colors.primary} style={{ opacity: 0.8 }} />
+                            ) : (
+                                <Smartphone size={12} color={colors.text} style={{ opacity: 0.5 }} />
+                            )}
                             <Text style={[styles.cardPan, { color: colors.text }]}>
                                 {isPanMasked ? '******' + item.panNumber.slice(-4) : item.panNumber}
                             </Text>
@@ -180,7 +185,7 @@ export const AllotmentResultCard = ({
 const styles = StyleSheet.create({
     card: {
         borderRadius: 8,
-        marginBottom: 8,
+        // marginBottom: 8,
         padding: 12,
         // Remove elevation for simpler look, or keep minimal
         borderWidth: 1,

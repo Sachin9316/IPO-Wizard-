@@ -7,15 +7,14 @@ import { IPOData } from '../types/ipo';
 import { IPOCard } from '../components/IPOCard';
 import { SkeletonIPOCard } from '../components/SkeletonIPOCard';
 import { EmptyState } from '../components/EmptyState';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { fetchMainboardIPOs, fetchSMEIPOs, fetchListedIPOs, fetchWatchlist } from '../services/api';
 import { mapBackendToFrontend } from '../utils/mapper';
 import { useAuth } from '../context/AuthContext';
-import { IPOListHeader } from '../components/ipo/IPOListHeader';
 import { useUI } from '../context/UIContext';
 
 interface IPOListScreenProps {
-    type: 'SME' | 'Mainboard' | 'Alloted' | 'Listed' | 'Watchlist' | 'Open' | 'Closed' | 'ClosedListed';
+    type: 'SME' | 'Mainboard' | 'Alloted' | 'Listed' | 'Watchlist' | 'Open' | 'Upcoming' | 'Closed' | 'ClosedListed';
 }
 
 export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps } }) => {
@@ -24,7 +23,16 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
     const navigation = useNavigation<any>();
     const { token, isAuthenticated } = useAuth();
     const { headerFilter } = useUI();
+    const isFocused = useIsFocused();
+    const [localHeaderFilter, setLocalHeaderFilter] = React.useState(headerFilter);
     const [ipos, setIpos] = React.useState<IPOData[]>([]);
+
+    // Lazy update of filter to prevent background tabs from re-rendering list
+    React.useEffect(() => {
+        if (isFocused) {
+            setLocalHeaderFilter(headerFilter);
+        }
+    }, [headerFilter, isFocused]);
     const [loading, setLoading] = React.useState(true);
     const [refreshing, setRefreshing] = React.useState(false);
 
@@ -34,29 +42,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
     const [loadingMore, setLoadingMore] = React.useState(false);
     const [fetchStage, setFetchStage] = React.useState(0);
 
-    const [searchQuery, setSearchQuery] = React.useState('');
-    const [debouncedQuery, setDebouncedQuery] = React.useState('');
 
-    // Filters for ClosedListed screen
-    const [closedListedFilter, setClosedListedFilter] = React.useState({
-        category: 'ALL', // 'ALL', 'MAINBOARD', 'SME'
-        status: 'ALL',    // 'ALL', 'CLOSED', 'LISTED'
-        allotment: 'ALL' // 'ALL', 'OUT', 'AWAITED'
-    });
-
-    // Filters for Upcoming (Open) screen
-    const [upcomingFilter, setUpcomingFilter] = React.useState({
-        category: 'ALL' // 'ALL', 'MAINBOARD', 'SME'
-    });
-
-    // Debounce Search
-    React.useEffect(() => {
-        const handler = setTimeout(() => {
-            setDebouncedQuery(searchQuery);
-        }, 500);
-
-        return () => clearTimeout(handler);
-    }, [searchQuery]);
 
     // Define loadData BEFORE using it in useEffect
     const loadData = React.useCallback(async (pageNum: number, stage: number, shouldRefresh = false) => {
@@ -68,8 +54,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
             const limit = 10;
             let currentFetchPromise: Promise<any[]> | null = null;
 
-            // Pass search query if type is Alloted OR ClosedListed
-            const search = (type === 'Alloted' || type === 'ClosedListed') ? debouncedQuery : undefined;
+
 
             if (type === 'Mainboard') {
                 // Stage 0: OPEN
@@ -78,11 +63,14 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
                 // Stage 0: OPEN
                 if (stage === 0) currentFetchPromise = fetchSMEIPOs(pageNum, limit, 'OPEN');
             } else if (type === 'Listed') {
-                // Stage 0: Mainboard Closed, Stage 1: SME Closed, Stage 2: Listed
-                if (stage === 0) currentFetchPromise = fetchMainboardIPOs(pageNum, limit, 'CLOSED');
-                else if (stage === 1) currentFetchPromise = fetchSMEIPOs(pageNum, limit, 'CLOSED');
-                else if (stage === 2) currentFetchPromise = fetchListedIPOs(pageNum, limit);
-            } else if (type === 'Open') {
+                if (pageNum === 1 && stage === 0) {
+                    const [mbListed, smeListed] = await Promise.all([
+                        fetchMainboardIPOs(1, 20, 'LISTED'),
+                        fetchSMEIPOs(1, 20, 'LISTED')
+                    ]);
+                    fetchedData = [...mbListed, ...smeListed].sort((a, b) => new Date(b.listing_date || b.close_date).getTime() - new Date(a.listing_date || a.close_date).getTime());
+                }
+            } else if (type === 'Upcoming') {
                 // Fetch both Mainboard and SME UPCOMING IPOs only
                 if (pageNum === 1 && stage === 0) {
                     const [mbUpcoming, smeUpcoming] = await Promise.all([
@@ -92,6 +80,18 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
 
                     // Sort by open date (soonest first)
                     fetchedData = [...mbUpcoming, ...smeUpcoming].sort((a, b) => new Date(a.open_date).getTime() - new Date(b.open_date).getTime());
+                }
+            } else if (type === 'Open') {
+                // Fetch both Mainboard and SME OPEN IPOs
+                if (pageNum === 1 && stage === 0) {
+                    const [mbOpen, smeOpen] = await Promise.all([
+                        fetchMainboardIPOs(1, 20, 'OPEN'),
+                        fetchSMEIPOs(1, 20, 'OPEN')
+                    ]);
+
+                    // Sort by open date? Or close date? Usually close date for open IPOs to show urgency?
+                    // User didn't specify, but "Closing Soon" logic usually implies sorting by close date.
+                    fetchedData = [...mbOpen, ...smeOpen].sort((a, b) => new Date(a.close_date).getTime() - new Date(b.close_date).getTime());
                 }
             } else if (type === 'Closed') {
                 // Fetch both Mainboard and SME Closed IPOs and merge
@@ -112,10 +112,10 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
                 // Fetch ALL Closed and Listed logic with Search
                 if (pageNum === 1 && stage === 0) {
                     const [mbClosed, mbListed, smeClosed, smeListed] = await Promise.all([
-                        fetchMainboardIPOs(1, 20, 'CLOSED', search),
-                        fetchMainboardIPOs(1, 20, 'LISTED', search),
-                        fetchSMEIPOs(1, 20, 'CLOSED', search),
-                        fetchSMEIPOs(1, 20, 'LISTED', search)
+                        fetchMainboardIPOs(1, 20, 'CLOSED'),
+                        fetchMainboardIPOs(1, 20, 'LISTED'),
+                        fetchSMEIPOs(1, 20, 'CLOSED'),
+                        fetchSMEIPOs(1, 20, 'LISTED')
                     ]);
                     // Only show IPOs where allotment is still awaited
                     fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed].filter(ipo => !ipo.isAllotmentOut);
@@ -127,10 +127,10 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
                 // Keeping simpler logic for Alloted for now
                 if (pageNum === 1 && stage === 0) {
                     const [mbClosed, mbListed, smeClosed, smeListed] = await Promise.all([
-                        fetchMainboardIPOs(1, 50, 'CLOSED', search),
-                        fetchMainboardIPOs(1, 50, 'LISTED', search),
-                        fetchSMEIPOs(1, 50, 'CLOSED', search),
-                        fetchSMEIPOs(1, 50, 'LISTED', search)
+                        fetchMainboardIPOs(1, 50, 'CLOSED'),
+                        fetchMainboardIPOs(1, 50, 'LISTED'),
+                        fetchSMEIPOs(1, 50, 'CLOSED'),
+                        fetchSMEIPOs(1, 50, 'LISTED')
                     ]);
                     // Only show IPOs where allotment is out
                     fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed].filter(ipo => ipo.isAllotmentOut);
@@ -160,12 +160,12 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
             }
 
             // Stage Transition Logic
-            if (fetchedData.length < limit && type !== 'Alloted' && type !== 'Watchlist' && type !== 'Open' && type !== 'ClosedListed' && type !== 'Mainboard' && type !== 'SME') {
+            if (fetchedData.length < limit && type !== 'Alloted' && type !== 'Watchlist' && type !== 'Upcoming' && type !== 'Listed' && type !== 'Open' && type !== 'ClosedListed' && type !== 'Mainboard' && type !== 'SME') {
                 let nextStage = -1;
                 // Mainboard and SME now only has stage 0 (Open), no transition needed.
                 // if ((type === 'Mainboard' || type === 'SME') && stage === 0) nextStage = 1; 
 
-                if (type === 'Listed' && stage < 2) nextStage = stage + 1;
+                // if (type === 'Listed' && stage < 2) nextStage = stage + 1;
 
                 if (nextStage !== -1) {
                     setFetchStage(nextStage);
@@ -175,7 +175,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
                     setHasMore(false);
                 }
             } else {
-                if (type === 'Watchlist' || type === 'Alloted' || type === 'Open' || type === 'ClosedListed' || type === 'Mainboard' || type === 'SME') setHasMore(false);
+                if (type === 'Watchlist' || type === 'Alloted' || type === 'Upcoming' || type === 'Listed' || type === 'Open' || type === 'ClosedListed' || type === 'Mainboard' || type === 'SME') setHasMore(false);
                 else setHasMore(true);
             }
 
@@ -186,7 +186,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
             setRefreshing(false);
             setLoadingMore(false);
         }
-    }, [type, token, isAuthenticated, debouncedQuery]);
+    }, [type, token, isAuthenticated]);
 
     // NOW use loadData in useEffects
     // Reload data when debounced query changes (only for Alloted)
@@ -194,7 +194,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
         if (type === 'Alloted' || type === 'ClosedListed') {
             loadData(1, 0, true);
         }
-    }, [debouncedQuery, loadData, type]);
+    }, [loadData, type]);
 
     // Initial load on mount for others
     React.useEffect(() => {
@@ -204,9 +204,15 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
     }, [loadData, type]);
 
 
-    const handlePress = (item: IPOData) => {
+    const handlePress = React.useCallback((item: IPOData) => {
         navigation.navigate('IPODetails', { item });
-    };
+    }, [navigation]);
+
+    const renderItem = React.useCallback(({ item }: { item: IPOData }) => (
+        <IPOCard item={item} onPress={handlePress} />
+    ), [handlePress]);
+
+    const keyExtractor = React.useCallback((item: IPOData) => item.id, []);
 
     const onRefresh = () => {
         setRefreshing(true);
@@ -217,7 +223,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
     };
 
     const loadMore = () => {
-        if (!loadingMore && hasMore && !loading && type !== 'Alloted' && type !== 'Watchlist' && type !== 'Open' && type !== 'ClosedListed' && type !== 'Mainboard' && type !== 'SME') {
+        if (!loadingMore && hasMore && !loading && type !== 'Alloted' && type !== 'Watchlist' && type !== 'Upcoming' && type !== 'Listed' && type !== 'Open' && type !== 'ClosedListed' && type !== 'Mainboard' && type !== 'SME') {
             const nextPage = page + 1;
             setPage(nextPage);
             loadData(nextPage, fetchStage);
@@ -233,7 +239,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
         );
     };
 
-    const [filterType, setFilterType] = React.useState<'ALL' | 'OUT' | 'AWAITED'>('ALL'); // For Alloted
+
 
     // Filter Logic
     // Filter Logic
@@ -241,24 +247,18 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
         let result = ipos;
 
         // 1. Apply Type-Specific Filters
-        if (type === 'ClosedListed') {
-            result = result.filter(ipo => {
-                const catMatch = closedListedFilter.category === 'ALL' || (ipo.type && ipo.type.toUpperCase() === closedListedFilter.category.toUpperCase());
-                const statusMatch = closedListedFilter.status === 'ALL' ||
-                    (closedListedFilter.status === 'CLOSED' && ipo.status === 'Closed');
-                return catMatch && statusMatch;
-            });
-        }
+        // 1. Apply Type-Specific Filters
+        // (Previously used closedListedFilter here, now removed as per requirement)
 
         // 2. Apply Global Header Filter (ALL | SME | MAINBOARD)
-        if (headerFilter === 'SME') {
+        if (localHeaderFilter === 'SME') {
             result = result.filter(ipo => ipo.type === 'SME');
-        } else if (headerFilter === 'MAINBOARD') {
+        } else if (localHeaderFilter === 'MAINBOARD') {
             result = result.filter(ipo => ipo.type === 'Mainboard');
         }
 
         return result;
-    }, [ipos, type, closedListedFilter, headerFilter]);
+    }, [ipos, type, localHeaderFilter]);
 
 
     return (
@@ -273,15 +273,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
                 <Rect width="100%" height="100%" fill="url(#grad)" />
             </Svg>
 
-            <IPOListHeader
-                type={type}
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                upcomingFilter={upcomingFilter}
-                setUpcomingFilter={setUpcomingFilter}
-                closedListedFilter={closedListedFilter}
-                setClosedListedFilter={setClosedListedFilter}
-            />
+
 
             {loading && !refreshing && page === 1 && fetchStage === 0 ? (
                 <View style={{ flex: 1, padding: 16 }}>
@@ -293,11 +285,12 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
             ) : (
                 <FlatList
                     data={filteredIpos}
-                    renderItem={({ item }) => <IPOCard item={item} onPress={handlePress} />}
-                    keyExtractor={(item) => item.id}
-                    initialNumToRender={5}
-                    windowSize={5}
-                    maxToRenderPerBatch={5}
+                    renderItem={renderItem}
+                    keyExtractor={keyExtractor}
+                    initialNumToRender={8}
+                    windowSize={10}
+                    maxToRenderPerBatch={8}
+                    updateCellsBatchingPeriod={50}
                     removeClippedSubviews={true}
                     contentContainerStyle={[styles.listContent, type === 'Alloted' && { paddingTop: 8 }]}
                     ListEmptyComponent={
@@ -316,8 +309,8 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
                                 description={type === 'Alloted'
                                     ? "We couldn't find any allotment results matching your search or filters."
                                     : "There are currently no IPOs listed in this category. Check back later!"}
-                                buttonText={type === 'Alloted' ? "Clear Search" : undefined}
-                                onButtonPress={type === 'Alloted' ? () => setSearchQuery('') : undefined}
+                                buttonText={undefined}
+                                onButtonPress={undefined}
                             />
                         )
                     }

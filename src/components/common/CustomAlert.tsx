@@ -34,7 +34,7 @@ export const CustomAlert: React.FC<AlertOptions & { onClose: () => void }> = ({
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 200,
-                useNativeDriver: true,
+                useNativeDriver: false,
             })
         ];
 
@@ -44,7 +44,7 @@ export const CustomAlert: React.FC<AlertOptions & { onClose: () => void }> = ({
                     toValue: 1,
                     friction: 8,
                     tension: 40,
-                    useNativeDriver: true,
+                    useNativeDriver: false,
                 })
             );
         } else {
@@ -53,7 +53,7 @@ export const CustomAlert: React.FC<AlertOptions & { onClose: () => void }> = ({
                     toValue: 0,
                     friction: 8,
                     tension: 40,
-                    useNativeDriver: true,
+                    useNativeDriver: false,
                 })
             );
         }

@@ -322,8 +322,17 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                             opacity: 1 // Always fully visible opacity-wise, just specialized color
                         }
                     ]}
-                    disabled={!item.isAllotmentOut}
+                    disabled={false}
                     onPress={async () => {
+                        if (!item.isAllotmentOut) {
+                            showAlert({
+                                title: "Allotment Not Out",
+                                message: "The allotment status for this IPO has not been announced yet. Please check back later!",
+                                type: 'info'
+                            });
+                            return;
+                        }
+
                         // Check if user has ANY PANs (Local or Cloud)
                         let hasPans = false;
                         try {
@@ -368,20 +377,20 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: 16,
-        paddingBottom: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
         borderBottomWidth: 1,
     },
     closeBtn: {
         padding: 4,
     },
     headerTitle: { // We might hide this as it's redundant with hero, or keep small
-        fontSize: 16,
+        fontSize: 22,
         fontWeight: 'bold',
         opacity: 1,
     },
     content: {
-        paddingBottom: 120,
+        paddingBottom: 100,
     },
     // Compact Header Styles
     compactHeader: {
@@ -407,9 +416,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.05)',
     },
     logoLarge: {
-        width: '70%',
-        height: '70%',
-        borderRadius: 8,
+        width: '100%',
+        height: '100%',
+        borderRadius: 14,
     },
     companyNameLarge: {
         fontSize: 18,

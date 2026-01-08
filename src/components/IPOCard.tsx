@@ -22,12 +22,12 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 500,
-                useNativeDriver: true,
+                useNativeDriver: false,
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
                 duration: 500,
-                useNativeDriver: true,
+                useNativeDriver: false,
             })
         ]).start();
 
@@ -100,7 +100,23 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
                                         <Text style={[styles.gmpLabel, { color: colors.text, marginRight: 4 }]}>GMP</Text>
                                         <Info size={12} color={colors.text} opacity={0.5} />
                                     </View>
-                                    <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{item.gmp}</Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'flex-end' }}>
+                                        {(() => {
+                                            const gmpStr = item.gmp || '';
+                                            // Try to match "Amount (Percentage)"
+                                            const match = gmpStr.match(/^(.+?)\s*(\(.*\))$/);
+                                            if (match) {
+                                                return (
+                                                    <>
+                                                        <Text style={[styles.gmpValue, { color: '#4CAF50', fontSize: 16, marginRight: 4 }]}>{match[1]}</Text>
+                                                        <Text style={[styles.gmpValue, { color: '#4CAF50', fontSize: 16 }]}>{match[2]}</Text>
+                                                    </>
+                                                );
+                                            }
+                                            // Fallback if format is different
+                                            return <Text style={[styles.gmpValue, { color: '#4CAF50', fontSize: 16 }]}>{gmpStr}</Text>;
+                                        })()}
+                                    </View>
                                 </View>
                             </View>
                         </View>
@@ -167,7 +183,7 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         padding: 12,
-        alignItems: 'center',
+        alignItems: 'flex-start',
     },
     logoContainer: {
         marginRight: 12,
@@ -190,7 +206,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 15,
-        fontWeight: '700',
+        fontWeight: '600',
         marginBottom: 4,
     },
     allotmentBadge: {
@@ -200,7 +216,7 @@ const styles = StyleSheet.create({
     },
     allotmentText: {
         fontSize: 9,
-        fontWeight: 'bold',
+        fontWeight: '600',
     },
     subtitleRow: {
         flexDirection: 'row',
@@ -208,7 +224,7 @@ const styles = StyleSheet.create({
     },
     typeBadge: {
         fontSize: 9,
-        fontWeight: '600',
+        fontWeight: '500',
         borderWidth: 1,
         borderRadius: 4,
         paddingHorizontal: 4,
@@ -224,7 +240,7 @@ const styles = StyleSheet.create({
     },
     statusText: {
         fontSize: 11,
-        fontWeight: '600',
+        fontWeight: '500',
     },
     divider: {
         height: 1,
@@ -246,22 +262,22 @@ const styles = StyleSheet.create({
     statLabel: {
         fontSize: 9,
         opacity: 0.6,
-        fontWeight: '600',
+        fontWeight: '500',
         marginBottom: 2,
         letterSpacing: 0.5,
     },
     statValue: {
         fontSize: 13,
-        fontWeight: '600',
+        fontWeight: '500',
     },
     gmpLabel: {
-        fontSize: 12,
+        fontSize: 10,
         opacity: 0.6,
-        fontWeight: '700',
+        fontWeight: '600',
     },
     gmpValue: {
         fontSize: 16,
-        fontWeight: '700',
+        fontWeight: '600',
     },
     disclaimerContainer: {
         paddingVertical: 6,

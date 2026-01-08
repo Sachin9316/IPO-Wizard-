@@ -4,12 +4,11 @@ import { IPOListScreen } from '../screens/IPOListScreen';
 import { useTheme } from '../theme/ThemeContext';
 
 export type TopTabParamList = {
-    Mainboard: { type: 'Mainboard' };
-    SME: { type: 'SME' };
+    Upcoming: { type: 'Upcoming' };
+    Open: { type: 'Open' };
     Listed: { type: 'Listed' };
     Alloted: { type: 'Alloted' };
     Watchlist: { type: 'Watchlist' };
-    Open: { type: 'Open' };
     ClosedListed: { type: 'ClosedListed' };
 };
 
@@ -36,28 +35,29 @@ export const TopTabNavigator = () => {
             }}
         >
             <Tab.Screen
-                name="Open"
+                name="Upcoming"
                 component={IPOListScreen}
-                initialParams={{ type: 'Open' }}
+                initialParams={{ type: 'Upcoming' }}
                 options={{ title: 'Upcoming' }}
             />
             <Tab.Screen
-                name="Mainboard"
+                name="Open"
                 component={IPOListScreen}
-                initialParams={{ type: 'Mainboard' }}
-                options={{ title: 'Open/Mainboard' }}
-            />
-            <Tab.Screen
-                name="SME"
-                component={IPOListScreen}
-                initialParams={{ type: 'SME' }}
-                options={{ title: 'Open/SME' }}
+                initialParams={{ type: 'Open' }}
+                options={{ title: 'Open' }}
             />
             <Tab.Screen
                 name="ClosedListed"
                 component={IPOListScreen}
                 initialParams={{ type: 'ClosedListed' }}
-                options={{ title: 'Closed/Awaited' }}
+                options={{ title: 'Closed' }}
+            />
+
+            <Tab.Screen
+                name="Allotment"
+                component={IPOListScreen}
+                initialParams={{ type: 'Alloted' }}
+                options={{ title: 'Allotment' }}
             />
 
             <Tab.Screen

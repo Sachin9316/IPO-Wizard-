@@ -8,6 +8,7 @@ import { CustomHeader } from '../components/CustomHeader';
 import { Home, PieChart, User, CreditCard, Newspaper, Crown } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { InsightsScreen } from '../screens/InsightsScreen';
+import { NewsScreen } from '../screens/NewsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -52,14 +53,14 @@ export const BottomTabNavigator = () => {
                 }}
             />
             <Tab.Screen
-                name="Alloted"
-                component={IPOListScreen}
-                initialParams={{ type: 'Alloted' }}
+                name="News"
+                component={NewsScreen}
                 options={{
-                    tabBarLabel: 'Allotment Out',
-                    tabBarIcon: ({ color, size }) => <PieChart color={color} size={size} />,
-                    headerShown: true,
-                    header: () => <CustomHeader title="Allotment Out" />
+                    header: () => <CustomHeader title="IPO News" showSearch={false} />,
+                    tabBarLabel: 'News',
+                    tabBarIcon: ({ color, size }) => (
+                        <Newspaper color={color} size={size} />
+                    ),
                 }}
             />
             <Tab.Screen

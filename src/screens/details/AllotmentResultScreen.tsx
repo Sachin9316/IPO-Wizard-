@@ -1,17 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Easing, Share, Image, RefreshControl, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Easing, Share, Image, RefreshControl, Alert, InteractionManager } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { ArrowLeft, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy, MoreVertical, RefreshCw, ExternalLink } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy, MoreVertical, RefreshCw, ExternalLink, Cloud, Smartphone, Globe, Plus } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
-import { checkAllotmentStatus, fetchMainboardIPOById } from '../../services/api';
+import { useUI } from '../../context/UIContext';
+import { checkAllotmentStatus, fetchMainboardIPOById, addUserPAN } from '../../services/api';
 import { AllotmentStats } from '../../components/allotment/AllotmentStats';
 import { AllotmentResultCard } from '../../components/allotment/AllotmentResultCard';
+import { AddPANModal } from '../../components/AddPANModal';
 
 interface PANData {
     panNumber: string;
     name: string;
+    source: 'LOCAL' | 'CLOUD';
 }
 
 interface AllotmentResult {
@@ -21,18 +24,22 @@ interface AllotmentResult {
     units?: number;
     message?: string;
     dpId?: string;
+    source: 'LOCAL' | 'CLOUD';
 }
 
 export const AllotmentResultScreen = ({ route, navigation }: any) => {
+    const insets = useSafeAreaInsets(); // Get safe area insets
     const { colors } = useTheme();
     const { ipo: initialIpo } = route.params;
     const [ipo, setIpo] = useState(initialIpo);
     const ipoName = ipo?.name || ipo?.companyName;
     const ipoLogo = ipo?.logoUrl || ipo?.icon;
-    const { user, isAuthenticated } = useAuth();
+    const { user, isAuthenticated, token } = useAuth();
 
+    // Transition state to ensure smooth navigation
+    const [isTransitioning, setIsTransitioning] = useState(true);
     const [loading, setLoading] = useState(true);
-    const [progress, setProgress] = useState(0); // 0 to 1
+    const [progress, setProgress] = useState(0);
     const [results, setResults] = useState<AllotmentResult[]>([]);
     const [allPanCount, setAllPanCount] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
@@ -43,33 +50,47 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Fetch fresh IPO data to get latest Registrar info
-        const syncIpoData = async () => {
-            if (initialIpo?._id) {
-                try {
-                    const fresh = await fetchMainboardIPOById(initialIpo._id);
-                    if (fresh) {
-                        console.log('Refreshed IPO:', fresh.companyName, fresh.registrarName);
-                        setIpo(prev => ({ ...prev, ...fresh }));
+        // Wait for navigation animation continuously to finish before heavy lifting
+        const task = InteractionManager.runAfterInteractions(async () => {
+            // End transition - screen is fully visible now
+            setIsTransitioning(false);
+
+            // Fetch fresh IPO data to get latest Registrar info
+            const syncIpoData = async () => {
+                if (initialIpo?._id) {
+                    try {
+                        const fresh = await fetchMainboardIPOById(initialIpo._id);
+                        if (fresh) {
+                            console.log('Refreshed IPO:', fresh.companyName, fresh.registrarName);
+                            setIpo((prev: any) => ({ ...prev, ...fresh }));
+                        }
+                    } catch (e) {
+                        console.log('Failed to sync IPO data', e);
                     }
-                } catch (e) {
-                    console.log('Failed to sync IPO data', e);
                 }
-            }
-        };
-        syncIpoData();
-    }, []);
+            };
+            await syncIpoData();
+        });
+
+        return () => task.cancel();
+    }, [initialIpo?._id]);
 
     useEffect(() => {
-        // Wait for IPO sync if possible, or just run if we trust initial
-        // But better to run checkAllotment AFTER sync?
-        // Typically sync is fast. Let's run checkAllotment but it uses `ipo` state.
-        // If we run it immediately, it might use stale `ipo`.
-        // So we should depend on `ipo`? NO, infinite loop.
-        // We will call checkAllotment inside a separate effect or just run, but checkAllotment reads `ipo` state closure?
-        // No, checkAllotment is defined inside render, so it reads current `ipo` state ref.
-        checkAllotment();
-    }, [ipo.registrarName]); // Re-run if registrarName updates!
+        if (!isTransitioning) {
+            checkAllotment();
+        }
+    }, [isTransitioning, ipo.registrarName]);
+
+    // ... (rest of helper functions: getRegistrarKey, handleOpenRegistrar, checkAllotment, etc.)
+    // Note: I am NOT including the entire file content here to avoid token limit, relying on the 'StartLine/EndLine' to target the top section correctly.
+    // However, replace_file_content requires me to provide the *exact* replacement block.
+    // I need to be careful not to delete helper functions if they are in the range. 
+    // The range 30-100 contains definitions. I'll preserve them by narrowing the edit.
+
+    // Actually, I will split this into smaller edits to be safe.
+    // Edit 1: Imports and component start (using View/insets)
+    // Edit 2: State and Effects
+
 
     const getRegistrarKey = (name?: string) => {
         if (!name) return null;
@@ -92,8 +113,12 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     };
 
     const checkAllotment = async () => {
-        setLoading(true);
-        setProgress(0);
+        // Don't set loading=true if we want to show existing list or just refresh it.
+        // Actually for first load we might want a skeleton?
+        // But here we want instant UI.
+        // If results are empty, we might want to show loading?
+        // Let's rely on standard "WAITING" status in list.
+        if (results.length === 0) setLoading(true); // Only show spinner if we have absolutely nothing
 
         try {
             // Use registrarName map, fallback to registrarLink
@@ -112,19 +137,29 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             const stored = await AsyncStorage.getItem('unsaved_pans');
             if (stored) {
                 const parsed = JSON.parse(stored);
-                localPans = parsed.map((p: any) => ({ panNumber: p.panNumber, name: p.name }));
+                localPans = parsed.map((p: any) => ({ panNumber: p.panNumber, name: p.name, source: 'LOCAL' as const }));
             }
 
             // 2. Fetch Cloud PANs
             let cloudPans: PANData[] = [];
             if (isAuthenticated && user?.panDocuments) {
-                cloudPans = user.panDocuments.map((p: any) => ({ panNumber: p.panNumber, name: p.name }));
+                cloudPans = user.panDocuments.map((p: any) => ({ panNumber: p.panNumber, name: p.name, source: 'CLOUD' as const }));
             }
 
             // 3. Merge Unique PANs
             const allPansMap = new Map<string, PANData>();
+            // Prioritize CLOUD if duplicates exist (though logically same PAN is same PAN)
             [...localPans, ...cloudPans].forEach(p => {
-                allPansMap.set(p.panNumber, p);
+                // If it exists and new one is Cloud, overwrite? Or just keep first found.
+                // Let's keep existing logic but just set map.
+                if (allPansMap.has(p.panNumber)) {
+                    // If existing is LOCAL and new is CLOUD, update to CLOUD?
+                    if (p.source === 'CLOUD') {
+                        allPansMap.set(p.panNumber, p);
+                    }
+                } else {
+                    allPansMap.set(p.panNumber, p);
+                }
             });
             const allPans = Array.from(allPansMap.values());
             setAllPanCount(allPans.length);
@@ -143,31 +178,35 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                     name: p.name,
                     status: 'UNKNOWN' as const,
                     units: 0,
-                    message: 'Registrar not supported'
+                    message: 'Registrar not supported',
+                    source: p.source
                 }));
                 setResults(mappedResults);
                 setLoading(false);
                 Animated.timing(fadeAnim, {
-                    toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.ease)
+                    toValue: 1, duration: 500, useNativeDriver: false, easing: Easing.out(Easing.ease)
                 }).start();
                 return;
             }
 
-            // Initialize results with a "PENDING" or "WAITING" state if you want, 
+            // Initialize results with a "WAITING" state
             // or just built it up. Let's fill with initial "waiting" state.
             const initialResults: AllotmentResult[] = allPans.map(p => ({
                 panNumber: p.panNumber,
                 name: p.name,
                 status: 'WAITING', // Show as gray/loading
                 units: 0,
-                message: 'Waiting...'
+                message: 'Waiting...',
+                source: p.source
             }));
             setResults(initialResults);
-            setLoading(false); // <--- SHOW LIST IMMEDIATELY
+
+            // SHOW LIST IMMEDIATELY
+            setLoading(false);
 
             // Trigger Fade In immediately so user sees the list
             Animated.timing(fadeAnim, {
-                toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.out(Easing.ease)
+                toValue: 1, duration: 500, useNativeDriver: false, easing: Easing.out(Easing.ease)
             }).start();
 
             let completedCount = 0;
@@ -261,10 +300,16 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         }
     };
 
-    const filteredResults = results.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.panNumber.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const [filterSource, setFilterSource] = useState<'ALL' | 'CLOUD' | 'LOCAL'>('ALL');
+
+    const filteredResults = results.filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.panNumber.toLowerCase().includes(searchQuery.toLowerCase());
+
+        const matchesSource = filterSource === 'ALL' ? true : item.source === filterSource;
+
+        return matchesSearch && matchesSource;
+    });
 
     const [activeMenuPan, setActiveMenuPan] = useState<string | null>(null);
 
@@ -382,6 +427,87 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         }
     };
 
+    const [modalVisible, setModalVisible] = useState(false);
+    const { showToast } = useUI();
+
+    const handleAddPan = async (data: { panNumber: string, name?: string }) => {
+        try {
+            // Check if PAN already exists in current results
+            if (results.some(r => r.panNumber === data.panNumber)) {
+                Alert.alert("Duplicate", "This PAN is already in the list.");
+                return;
+            }
+
+            let newResult: AllotmentResult = {
+                panNumber: data.panNumber,
+                name: data.name || 'New PAN',
+                status: 'CHECKING',
+                message: 'Checking status...',
+                source: isAuthenticated ? 'CLOUD' : 'LOCAL'
+            };
+
+            // 1. Save Logic
+            // 1. Save Logic
+            if (isAuthenticated && user && token) {
+                // Save to Cloud
+                await addUserPAN(token, { panNumber: data.panNumber, name: data.name || '' });
+                showToast({ message: "PAN saved to account", type: "success" });
+            } else {
+                // Save Locally
+                const stored = await AsyncStorage.getItem('unsaved_pans');
+                const currentPans = stored ? JSON.parse(stored) : [];
+                const newPanObj = { id: Date.now().toString(), panNumber: data.panNumber, name: data.name };
+
+                // Double check local duplicate
+                if (currentPans.some((p: any) => p.panNumber === data.panNumber)) {
+                    // Already exists, just ignore save but continue check
+                } else {
+                    await AsyncStorage.setItem('unsaved_pans', JSON.stringify([...currentPans, newPanObj]));
+                    showToast({ message: "PAN saved locally", type: "success" });
+                }
+            }
+
+            // 2. Update UI List Immediately
+            setResults(prev => [newResult, ...prev]);
+            setAllPanCount(prev => prev + 1);
+
+            // 3. Trigger Status Check
+            const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar || ipo.registrarLink);
+            if (registrarKey) {
+                // Check single PAN
+                const response = await checkAllotmentStatus(ipoName, registrarKey, [data.panNumber], true);
+                if (response.success && response.data.length > 0) {
+                    const res = response.data[0];
+                    setResults(prev => prev.map(item => {
+                        if (item.panNumber === data.panNumber) {
+                            return {
+                                ...item,
+                                status: res.status,
+                                units: res.units,
+                                message: res.message || '',
+                                name: res.name || item.name,
+                                dpId: res.dpId
+                            };
+                        }
+                        return item;
+                    }));
+                } else {
+                    setResults(prev => prev.map(item =>
+                        item.panNumber === data.panNumber ? { ...item, status: 'NOT_APPLIED', message: 'No record found' } : item
+                    ));
+                }
+            } else {
+                setResults(prev => prev.map(item =>
+                    item.panNumber === data.panNumber ? { ...item, status: 'UNKNOWN', message: 'Registrar not supported' } : item
+                ));
+            }
+
+        } catch (error) {
+            console.error("Add PAN Error:", error);
+            Alert.alert("Error", "Failed to save/check PAN.");
+        }
+    };
+
 
     const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => {
         return (
@@ -402,24 +528,24 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const allottedCount = results.filter(r => r.status === 'ALLOTTED').length;
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top', 'bottom']}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+            {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
                     <ArrowLeft color={colors.text} size={24} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>Allotment Status</Text>
-                <View style={{ width: 24 }} />
+
+                <TouchableOpacity
+                    onPress={() => setModalVisible(true)}
+                    style={{ padding: 4, backgroundColor: colors.primary + '20', borderRadius: 8 }}
+                >
+                    <Plus size={20} color={colors.primary} />
+                </TouchableOpacity>
             </View>
 
             <View style={styles.content}>
-                {loading ? (
-                    <View style={styles.centerContainer}>
-                        <View style={{ width: 200, height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden', marginBottom: 16 }}>
-                            <View style={{ width: `${progress * 100}%`, height: '100%', backgroundColor: colors.primary }} />
-                        </View>
-                        <Text style={[styles.loadingText, { color: colors.text }]}>Checking {Math.floor(progress * allPanCount)} / {allPanCount}...</Text>
-                    </View>
-                ) : results.length > 0 ? (
+                {results.length > 0 ? (
                     <View style={{ flex: 1 }}>
 
                         {/* Simple Summary */}
@@ -456,6 +582,59 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                     onChangeText={setSearchQuery}
                                 />
                             </View>
+
+                            {/* Filter Chips */}
+                            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, marginBottom: 4 }}>
+                                {(['ALL', 'CLOUD', 'LOCAL'] as const).map((type) => {
+                                    const isActive = filterSource === type;
+                                    let label = 'All';
+                                    let IconComponent = null;
+
+                                    if (type === 'CLOUD') {
+                                        label = 'Saved';
+                                        IconComponent = Cloud;
+                                    } else if (type === 'LOCAL') {
+                                        label = 'Unsaved';
+                                        IconComponent = Smartphone;
+                                    }
+
+                                    return (
+                                        <TouchableOpacity
+                                            key={type}
+                                            onPress={() => setFilterSource(type)}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                paddingVertical: 6,
+                                                paddingHorizontal: 16,
+                                                borderRadius: 20,
+                                                backgroundColor: isActive ? colors.primary : colors.card,
+                                                borderWidth: 1,
+                                                borderColor: isActive ? colors.primary : colors.border,
+                                                gap: 6
+                                            }}
+                                        >
+                                            {IconComponent && (
+                                                <IconComponent
+                                                    size={14}
+                                                    color={isActive ? '#FFF' : colors.text}
+                                                    style={{ opacity: isActive ? 1 : 0.6 }}
+                                                />
+                                            )}
+                                            <Text style={{
+                                                fontSize: 13,
+                                                fontWeight: isActive ? '600' : '500',
+                                                color: isActive ? '#FFF' : colors.text,
+                                                opacity: isActive ? 1 : 0.7
+                                            }}>
+                                                {label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+
+
                         </View>
 
 
@@ -504,7 +683,15 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                     </View>
                 )}
             </View>
-        </SafeAreaView>
+
+            <AddPANModal
+                visible={modalVisible}
+                onClose={() => setModalVisible(false)}
+                onSubmit={handleAddPan}
+                requireName={true}
+                title="Add New PAN"
+            />
+        </View>
     );
 };
 
@@ -512,10 +699,10 @@ const styles = StyleSheet.create({
     container: { flex: 1 },
     header: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        padding: 12, borderBottomWidth: 1,
+        paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1,
     },
     closeBtn: { padding: 4 },
-    headerTitle: { fontSize: 16, fontWeight: 'bold' },
+    headerTitle: { fontSize: 22, fontWeight: 'bold' },
     content: { flex: 1 },
     centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: 12, fontSize: 14, fontWeight: '600' },
