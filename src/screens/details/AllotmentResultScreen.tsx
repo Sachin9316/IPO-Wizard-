@@ -202,12 +202,13 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                     finalMessage.includes('Executable doesn') ||
                                     finalMessage.includes('playwright') ||
                                     finalMessage.includes('/root/.cache/') || // Path usually indicates server error
-                                    finalMessage.includes('Target closed');
+                                    finalMessage.includes('Target closed') ||
+                                    finalMessage.includes('Worker Request Failed');
 
                                 if (isTechnicalError) {
                                     console.warn(`Sanitized technical error for PAN ${p.panNumber}: ${finalMessage}`);
-                                    finalStatus = 'UNKNOWN';
-                                    finalMessage = 'Status details unavailable';
+                                    finalStatus = 'NOT_APPLIED';
+                                    finalMessage = 'No record found';
                                 }
 
                                 return {
@@ -235,7 +236,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                     console.error(`Error checking PAN ${p.panNumber}`, err);
                     setResults(prev => prev.map(item => {
                         if (item.panNumber === p.panNumber) {
-                            return { ...item, status: 'ERROR', message: 'Check failed' };
+                            return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
                         }
                         return item;
                     }));
@@ -307,12 +308,13 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                             finalMessage.includes('Executable doesn') ||
                             finalMessage.includes('playwright') ||
                             finalMessage.includes('/root/.cache/') ||
-                            finalMessage.includes('Target closed');
+                            finalMessage.includes('Target closed') ||
+                            finalMessage.includes('Worker Request Failed');
 
                         if (isTechnicalError) {
                             console.warn(`Sanitized technical error for PAN ${item.panNumber}: ${finalMessage}`);
-                            finalStatus = 'UNKNOWN';
-                            finalMessage = 'Status details unavailable';
+                            finalStatus = 'NOT_APPLIED';
+                            finalMessage = 'No record found';
                         }
 
                         return {
