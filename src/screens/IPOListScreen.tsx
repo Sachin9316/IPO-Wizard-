@@ -12,6 +12,7 @@ import { fetchMainboardIPOs, fetchSMEIPOs, fetchListedIPOs, fetchWatchlist } fro
 import { mapBackendToFrontend } from '../utils/mapper';
 import { useAuth } from '../context/AuthContext';
 import { IPOListHeader } from '../components/ipo/IPOListHeader';
+import { useUI } from '../context/UIContext';
 
 interface IPOListScreenProps {
     type: 'SME' | 'Mainboard' | 'Alloted' | 'Listed' | 'Watchlist' | 'Open' | 'Closed' | 'ClosedListed';
@@ -22,6 +23,7 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
     const { colors } = useTheme();
     const navigation = useNavigation<any>();
     const { token, isAuthenticated } = useAuth();
+    const { headerFilter } = useUI();
     const [ipos, setIpos] = React.useState<IPOData[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [refreshing, setRefreshing] = React.useState(false);
@@ -234,30 +236,29 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
     const [filterType, setFilterType] = React.useState<'ALL' | 'OUT' | 'AWAITED'>('ALL'); // For Alloted
 
     // Filter Logic
+    // Filter Logic
     const filteredIpos = React.useMemo(() => {
-        if (type === 'Open') {
-            return ipos.filter(ipo => {
-                // Handle potentially different checking casing (Mainboard vs MAINBOARD)
-                // Assuming ipo.type is 'Mainboard' or 'SME'
-                const filterCat = upcomingFilter.category;
-                if (filterCat === 'ALL') return true;
-                return ipo.type.toUpperCase() === filterCat.toUpperCase();
-            });
-        }
+        let result = ipos;
+
+        // 1. Apply Type-Specific Filters
         if (type === 'ClosedListed') {
-            return ipos.filter(ipo => {
+            result = result.filter(ipo => {
                 const catMatch = closedListedFilter.category === 'ALL' || (ipo.type && ipo.type.toUpperCase() === closedListedFilter.category.toUpperCase());
-                // Currently 'status' from backend is 'Mainboard IPO' which is vague? No, mapper handles status?
-                // Mapper maps status to 'Open' | 'Closed' | 'Listed' | 'Upcoming'.
                 const statusMatch = closedListedFilter.status === 'ALL' ||
                     (closedListedFilter.status === 'CLOSED' && ipo.status === 'Closed');
-
                 return catMatch && statusMatch;
             });
         }
-        if (type === 'Alloted') return ipos;
-        return ipos;
-    }, [ipos, filterType, type, closedListedFilter, upcomingFilter]);
+
+        // 2. Apply Global Header Filter (ALL | SME | MAINBOARD)
+        if (headerFilter === 'SME') {
+            result = result.filter(ipo => ipo.type === 'SME');
+        } else if (headerFilter === 'MAINBOARD') {
+            result = result.filter(ipo => ipo.type === 'Mainboard');
+        }
+
+        return result;
+    }, [ipos, type, closedListedFilter, headerFilter]);
 
 
     return (
@@ -293,7 +294,11 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
                 <FlatList
                     data={filteredIpos}
                     renderItem={({ item }) => <IPOCard item={item} onPress={handlePress} />}
-                    keyExtractor={(item, index) => `${item.id}-${index}`}
+                    keyExtractor={(item) => item.id}
+                    initialNumToRender={5}
+                    windowSize={5}
+                    maxToRenderPerBatch={5}
+                    removeClippedSubviews={true}
                     contentContainerStyle={[styles.listContent, type === 'Alloted' && { paddingTop: 8 }]}
                     ListEmptyComponent={
                         type === 'Watchlist' && !isAuthenticated ? (

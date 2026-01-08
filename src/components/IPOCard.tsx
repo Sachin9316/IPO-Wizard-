@@ -9,7 +9,7 @@ interface IPOCardProps {
     onPress: (item: IPOData) => void;
 }
 
-export const IPOCard = ({ item, onPress }: IPOCardProps) => {
+const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
     const { colors } = useTheme();
     const [imageError, setImageError] = React.useState(false);
 
@@ -275,3 +275,5 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     }
 });
+
+export const IPOCard = React.memo(IPOCardBase);

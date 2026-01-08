@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, TextInpu
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
-import { ArrowLeft, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart, Info } from 'lucide-react-native';
+import { ArrowLeft, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart, Info, IndianRupee, Layers, PieChart } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { toggleWatchlist } from '../../services/api';
@@ -111,7 +111,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
                     <ArrowLeft color={colors.text} size={24} />
                 </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>{item.name}</Text>
+                <Text style={[styles.headerTitle, { color: colors.text }]}>IPO Details</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity onPress={handleToggleWatchlist} style={styles.closeBtn}>
                         <Heart
@@ -130,36 +130,70 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Compact Hero Header */}
+                    {/* Refined Hero Header */}
+                    {/* Refined Hero Header */}
                     <View style={styles.compactHeader}>
-                        <View style={styles.headerTopRow}>
-                            <View style={[styles.logoContainerCompact, { borderColor: colors.border }]}>
+                        <View style={styles.heroContainer}>
+                            <View style={styles.logoContainerLarge}>
                                 {item.logoUrl ? (
-                                    <Image source={{ uri: item.logoUrl }} style={styles.logoCompact} resizeMode="contain" />
+                                    <Image source={{ uri: item.logoUrl }} style={styles.logoLarge} resizeMode="contain" />
                                 ) : (
-                                    <Text style={{ color: colors.text, fontSize: 18, fontWeight: 'bold' }}>{item.name.charAt(0)}</Text>
+                                    <Text style={{ color: colors.text, fontSize: 20, fontWeight: 'bold' }}>{item.name.charAt(0)}</Text>
                                 )}
                             </View>
                             <View style={{ flex: 1, justifyContent: 'center' }}>
-                                <Text style={[styles.companyNameCompact, { color: colors.text }]} numberOfLines={1}>{item.name}</Text>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-
-                                    <Text style={[styles.tagTextCompact, { color: colors.primary }]}>{item.type}</Text>
-                                    <View style={[styles.dotSeparator, { backgroundColor: colors.border }]} />
-                                    <Text style={[styles.tagTextCompact, { color: item.status === 'Open' ? '#4CAF50' : '#888' }]}>{item.status}</Text>
+                                <Text style={[styles.companyNameLarge, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
+                                <View style={styles.badgesRow}>
+                                    <View style={[styles.badgePill, { borderColor: colors.primary, paddingVertical: 2, paddingHorizontal: 6 }]}>
+                                        <Text style={[styles.badgeText, { color: colors.primary, fontSize: 10 }]}>{item.type}</Text>
+                                    </View>
+                                    <View style={[styles.badgePill, { borderColor: item.status === 'Open' ? '#4CAF50' : '#888', paddingVertical: 2, paddingHorizontal: 6 }]}>
+                                        <Text style={[styles.badgeText, { color: item.status === 'Open' ? '#4CAF50' : '#888', fontSize: 10 }]}>{item.status}</Text>
+                                    </View>
                                 </View>
                             </View>
                         </View>
                     </View>
 
-                    {/* Compact Stats Grid */}
+                    {/* Icon-based Stats Grid */}
                     <View style={styles.statsGrid}>
-                        <StatusBarItem label="Offer Dates" value={`${moment(item.rawDates?.offerStart).format('DD MMM')} - ${moment(item.rawDates?.offerEnd).format('DD MMM')}`} colors={colors} />
-                        <StatusBarItem label="Price Range" value={`₹${item.priceRange}`} colors={colors} />
-                        <StatusBarItem label="Issue Size" value={item.issueSize} colors={colors} />
-                        <StatusBarItem label="Lot Size" value={item.lotSize} colors={colors} />
-                        <StatusBarItem label="GMP" value={item.gmp} valueColor={item.gmp?.includes('+') ? '#4CAF50' : undefined} colors={colors} />
-                        <StatusBarItem label="Subs." value={item.subscription} colors={colors} />
+                        <StatusBarItem
+                            icon={<Calendar size={16} color={colors.text} opacity={0.6} />}
+                            label="Offer Dates"
+                            value={`${moment(item.rawDates?.offerStart).format('DD MMM')} - ${moment(item.rawDates?.offerEnd).format('DD MMM')}`}
+                            colors={colors}
+                        />
+                        <StatusBarItem
+                            icon={<IndianRupee size={16} color={colors.text} opacity={0.6} />}
+                            label="Price Range"
+                            value={item.priceRange}
+                            colors={colors}
+                        />
+                        <StatusBarItem
+                            icon={<Layers size={16} color={colors.text} opacity={0.6} />}
+                            label="Lot Size"
+                            value={item.lotSize}
+                            colors={colors}
+                        />
+                        <StatusBarItem
+                            icon={<PieChart size={16} color={colors.text} opacity={0.6} />}
+                            label="Issue Size"
+                            value={item.issueSize}
+                            colors={colors}
+                        />
+                        <StatusBarItem
+                            icon={<TrendingUp size={16} color={item.gmp?.includes('+') ? '#4CAF50' : colors.text} opacity={0.8} />}
+                            label="GMP"
+                            value={item.gmp}
+                            valueColor={item.gmp?.includes('+') ? '#4CAF50' : undefined}
+                            colors={colors}
+                        />
+                        <StatusBarItem
+                            icon={<Users size={16} color={colors.text} opacity={0.6} />}
+                            label="Subs."
+                            value={item.subscription}
+                            colors={colors}
+                        />
                     </View>
                     <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
@@ -272,47 +306,53 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                                 }}
                             />
 
-                            {/* Allotment Status */}
-                            <ActionIconButton
-                                icon={<CheckCircle size={24} color={item.isAllotmentOut ? "#2196F3" : colors.text} />}
-                                label="Allotment"
-                                backgroundColor={colors.card}
-                                borderColor={colors.border}
-                                onPress={async () => {
-                                    if (!item.isAllotmentOut) {
-                                        showAlert({ title: 'Info', message: 'Allotment is not out yet.', type: 'info' });
-                                        return;
-                                    }
-
-                                    // Check if user has ANY PANs (Local or Cloud)
-                                    let hasPans = false;
-                                    try {
-                                        const storedLocal = await AsyncStorage.getItem('unsaved_pans');
-                                        if (storedLocal && JSON.parse(storedLocal).length > 0) hasPans = true;
-
-                                        if (!hasPans && isAuthenticated && user?.panDocuments?.length > 0) {
-                                            hasPans = true;
-                                        }
-                                    } catch (e) { console.error(e); }
-
-                                    if (hasPans) {
-                                        navigation.navigate('AllotmentResult', { ipo: item });
-                                    } else {
-                                        showAlert({
-                                            title: "No PANs Found",
-                                            message: "Please add at least one PAN in your Profile to check allotment.",
-                                            type: 'info',
-                                            buttons: [
-                                                { text: "Cancel", style: "cancel" },
-                                                { text: "Add PAN", onPress: () => navigation.navigate("Root", { screen: "PANs" }) }
-                                            ]
-                                        });
-                                    }
-                                }}
-                            />
+                            {/* Allotment Status removed from here, moved to FAB */}
                         </ScrollView>
                     </View>
                 </ScrollView>
+            )}
+
+            {/* Floating Action Button for Allotment */}
+            {!loading && (
+                <TouchableOpacity
+                    style={[
+                        styles.fab,
+                        {
+                            backgroundColor: item.isAllotmentOut ? colors.primary : '#333333',
+                            opacity: 1 // Always fully visible opacity-wise, just specialized color
+                        }
+                    ]}
+                    disabled={!item.isAllotmentOut}
+                    onPress={async () => {
+                        // Check if user has ANY PANs (Local or Cloud)
+                        let hasPans = false;
+                        try {
+                            const storedLocal = await AsyncStorage.getItem('unsaved_pans');
+                            if (storedLocal && JSON.parse(storedLocal).length > 0) hasPans = true;
+
+                            if (!hasPans && isAuthenticated && user?.panDocuments?.length > 0) {
+                                hasPans = true;
+                            }
+                        } catch (e) { console.error(e); }
+
+                        if (hasPans) {
+                            navigation.navigate('AllotmentResult', { ipo: item });
+                        } else {
+                            showAlert({
+                                title: "No PANs Found",
+                                message: "Please add at least one PAN in your Profile to check allotment.",
+                                type: 'info',
+                                buttons: [
+                                    { text: "Cancel", style: "cancel" },
+                                    { text: "Add PAN", onPress: () => navigation.navigate("Root", { screen: "PANs" }) }
+                                ]
+                            });
+                        }
+                    }}
+                >
+                    <CheckCircle color={item.isAllotmentOut ? "#FFF" : "#888"} size={20} />
+                    <Text style={[styles.fabText, { color: item.isAllotmentOut ? "#FFF" : "#888" }]}>Check Allotment</Text>
+                </TouchableOpacity>
             )}
 
         </SafeAreaView>
@@ -338,51 +378,58 @@ const styles = StyleSheet.create({
     headerTitle: { // We might hide this as it's redundant with hero, or keep small
         fontSize: 16,
         fontWeight: 'bold',
-        opacity: 0, // Hidden initially? or just transparent
+        opacity: 1,
     },
     content: {
-        paddingBottom: 40,
+        paddingBottom: 120,
     },
     // Compact Header Styles
     compactHeader: {
         paddingHorizontal: 16,
         paddingVertical: 12,
     },
-    headerTopRow: {
+    // Refined Hero Styles
+    heroContainer: {
         flexDirection: 'row',
         alignItems: 'center',
+        padding: 12,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.03)',
+        marginBottom: 16,
     },
-    logoContainerCompact: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
-        borderWidth: 1,
+    logoContainerLarge: {
+        width: 56,
+        height: 56,
+        borderRadius: 14,
+        marginRight: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        backgroundColor: 'rgba(255,255,255,0.05)',
     },
-    logoCompact: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 10,
+    logoLarge: {
+        width: '70%',
+        height: '70%',
+        borderRadius: 8,
     },
-    companyNameCompact: {
+    companyNameLarge: {
         fontSize: 18,
-        fontWeight: '700',
+        fontWeight: 'bold',
+        marginBottom: 6,
     },
-    companySymbolCompact: {
-        fontSize: 12,
-        fontWeight: '600',
-        opacity: 0.6,
+    badgesRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
-    dotSeparator: {
-        width: 3,
-        height: 3,
-        borderRadius: 1.5,
+    badgePill: {
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
     },
-    tagTextCompact: {
+    badgeText: {
         fontSize: 11,
-        fontWeight: '600',
+        fontWeight: '700',
         textTransform: 'uppercase',
     },
     // Stats Grid
@@ -392,15 +439,25 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingBottom: 16,
         gap: 12,
+        justifyContent: 'space-between', // Try to space them out
     },
     statusBarItem: {
-        width: '30%', // roughly 3 per row
-        marginBottom: 4,
+        width: '48%', // 2 per row looks cleaner with icons
+        marginBottom: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255,255,255,0.03)', // Very subtle card bg for stats
+        padding: 10,
+        borderRadius: 12,
+        gap: 10,
+    },
+    statContent: {
+        flex: 1,
     },
     statusLabel: {
-        fontSize: 11,
-        fontWeight: '500',
-        opacity: 0.6,
+        fontSize: 10,
+        fontWeight: '600',
+        opacity: 0.5,
         marginBottom: 2,
     },
     statusValue: {
@@ -502,12 +559,36 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         textAlign: 'center',
     },
+    fab: {
+        position: 'absolute',
+        bottom: 24,
+        left: 20,
+        right: 20,
+        height: 56,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 16,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+        gap: 12,
+    },
+    fabText: {
+        fontWeight: '700',
+        fontSize: 16,
+    },
 });
 
-const StatusBarItem = ({ label, value, valueColor, colors }: any) => (
+const StatusBarItem = ({ label, value, valueColor, colors, icon }: any) => (
     <View style={styles.statusBarItem}>
-        <Text style={[styles.statusLabel, { color: colors.text }]}>{label}</Text>
-        <Text style={[styles.statusValue, { color: valueColor || colors.text }]}>{value || '-'}</Text>
+        {icon}
+        <View style={styles.statContent}>
+            <Text style={[styles.statusLabel, { color: colors.text }]}>{label}</Text>
+            <Text style={[styles.statusValue, { color: valueColor || colors.text }]} numberOfLines={1}>{value || '-'}</Text>
+        </View>
     </View>
 );
 

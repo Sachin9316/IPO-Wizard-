@@ -69,7 +69,7 @@ export const BottomTabNavigator = () => {
                     tabBarLabel: 'PANs',
                     tabBarIcon: ({ color, size }) => <CreditCard color={color} size={size} />,
                     headerShown: true,
-                    header: () => <CustomHeader title="PAN's" />
+                    header: () => <CustomHeader title="PAN's" showActions={false} />
                 }}
             />
             {/* <Tab.Screen
@@ -88,7 +88,7 @@ export const BottomTabNavigator = () => {
                     tabBarLabel: 'Profile',
                     tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
                     headerShown: true,
-                    header: () => <CustomHeader title="Profile" />
+                    header: () => <CustomHeader title="Profile" showActions={false} />
                 }}
             />
         </Tab.Navigator >

@@ -7,6 +7,8 @@ interface UIContextType {
     showAlert: (options: AlertOptions) => void;
     hideAlert: () => void;
     showToast: (options: ToastOptions | string) => void;
+    headerFilter: 'ALL' | 'SME' | 'MAINBOARD';
+    setHeaderFilter: (filter: 'ALL' | 'SME' | 'MAINBOARD') => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -20,6 +22,7 @@ export const useUI = () => {
 export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [alertConfig, setAlertConfig] = useState<AlertOptions & { variant?: 'centered' | 'bottom-sheet', style?: 'classic' | 'modern' | 'glass' } | null>(null);
     const [toastConfig, setToastConfig] = useState<ToastOptions | null>(null);
+    const [headerFilter, setHeaderFilter] = useState<'ALL' | 'SME' | 'MAINBOARD'>('ALL');
 
     const showAlert = useCallback((options: AlertOptions & { variant?: 'centered' | 'bottom-sheet', style?: 'classic' | 'modern' | 'glass' }) => {
         setAlertConfig(options);
@@ -42,8 +45,12 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
         }, 3000);
     }, []);
 
+    const contextValue = React.useMemo(() => ({
+        showAlert, hideAlert, showToast, headerFilter, setHeaderFilter
+    }), [showAlert, hideAlert, showToast, headerFilter]);
+
     return (
-        <UIContext.Provider value={{ showAlert, hideAlert, showToast }}>
+        <UIContext.Provider value={contextValue}>
             {children}
             {alertConfig && (
                 <CustomAlert

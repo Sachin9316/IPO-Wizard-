@@ -31,7 +31,7 @@ export const IPOListHeader = ({
     const { colors } = useTheme();
     const [showFilterMenu, setShowFilterMenu] = useState(false);
 
-    if (type !== 'Alloted' && type !== 'ClosedListed' && type !== 'Open') {
+    if (type !== 'Alloted' && type !== 'ClosedListed') {
         return null; // Header not needed for other types
     }
 
@@ -55,27 +55,7 @@ export const IPOListHeader = ({
                 </View>
             )}
 
-            {/* Upcoming (Open) Type Filters */}
-            {type === 'Open' && (
-                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-                    {['ALL', 'Mainboard', 'SME'].map((cat) => {
-                        const isSelected = upcomingFilter.category.toUpperCase() === (cat === 'Mainboard' ? 'MAINBOARD' : cat.toUpperCase());
-                        return (
-                            <TouchableOpacity
-                                key={cat}
-                                style={{
-                                    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-                                    backgroundColor: isSelected ? colors.primary : colors.card,
-                                    borderWidth: 1, borderColor: isSelected ? colors.primary : colors.border
-                                }}
-                                onPress={() => setUpcomingFilter(prev => ({ ...prev, category: cat === 'Mainboard' ? 'MAINBOARD' : cat }))}
-                            >
-                                <Text style={{ fontSize: 12, color: isSelected ? '#FFF' : colors.text, fontWeight: 'bold' }}>{cat}</Text>
-                            </TouchableOpacity>
-                        );
-                    })}
-                </View>
-            )}
+
 
             {/* Filter Menu for ClosedListed & Mainboard */}
             {type === 'ClosedListed' && (

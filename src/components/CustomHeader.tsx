@@ -1,36 +1,74 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
+import { useUI } from '../context/UIContext';
 import { Search, Moon, Sun } from 'lucide-react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-export const CustomHeader = ({ title }: { title: string }) => {
+export const CustomHeader = ({ title, showActions = true }: { title: string; showActions?: boolean }) => {
     const { theme, toggleTheme, colors } = useTheme();
+    const { headerFilter, setHeaderFilter } = useUI();
     const navigation = useNavigation<any>();
+    const insets = useSafeAreaInsets();
 
     return (
-        <SafeAreaView edges={['top']} style={{ backgroundColor: colors.background }}>
+        <View style={{ backgroundColor: colors.background, paddingTop: insets.top }}>
             <View style={[styles.container, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-                <View style={styles.rightContainer}>
-                    <TouchableOpacity onPress={toggleTheme} style={styles.iconButton}>
-                        {theme === 'dark' ? (
-                            <Sun color={colors.text} size={24} />
-                        ) : (
-                            <Moon color={colors.text} size={24} />
-                        )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.iconButton}
-                        onPress={() => navigation.navigate('Search')}
-                    >
-                        <Search color={colors.text} size={24} />
-                    </TouchableOpacity>
-                </View>
+                {showActions && (
+                    <View style={styles.rightContainer}>
+                        {/* Filter Toggle */}
+                        <View style={[styles.toggleContainer, { borderColor: colors.border }]}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.toggleBtn,
+                                    headerFilter === 'ALL' && { backgroundColor: colors.primary }
+                                ]}
+                                onPress={() => setHeaderFilter('ALL')}
+                            >
+                                <Text style={[
+                                    styles.toggleText,
+                                    { color: headerFilter === 'ALL' ? '#FFF' : colors.text }
+                                ]}>All</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.toggleBtn,
+                                    headerFilter === 'MAINBOARD' && { backgroundColor: colors.primary }
+                                ]}
+                                onPress={() => setHeaderFilter('MAINBOARD')}
+                            >
+                                <Text style={[
+                                    styles.toggleText,
+                                    { color: headerFilter === 'MAINBOARD' ? '#FFF' : colors.text }
+                                ]}>Mainboard</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.toggleBtn,
+                                    headerFilter === 'SME' && { backgroundColor: colors.primary }
+                                ]}
+                                onPress={() => setHeaderFilter('SME')}
+                            >
+                                <Text style={[
+                                    styles.toggleText,
+                                    { color: headerFilter === 'SME' ? '#FFF' : colors.text }
+                                ]}>SME</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <TouchableOpacity onPress={toggleTheme} style={styles.iconButton}>
+                            {theme === 'dark' ? (
+                                <Sun color={colors.text} size={24} />
+                            ) : (
+                                <Moon color={colors.text} size={24} />
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                )}
             </View>
-        </SafeAreaView>
+        </View>
     );
 };
 
@@ -51,6 +89,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     iconButton: {
-        marginLeft: 16,
+        marginLeft: 8,
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        borderWidth: 1,
+        borderRadius: 20,
+        overflow: 'hidden',
+        marginRight: 0,
+        height: 32,
+    },
+    toggleBtn: {
+        paddingHorizontal: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    toggleText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
