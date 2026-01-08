@@ -154,9 +154,9 @@ export const IPOCard = ({ item, onPress }: IPOCardProps) => {
 
 const styles = StyleSheet.create({
     card: {
-        borderRadius: 12,
+        borderRadius: 16,
         marginBottom: 12,
-        borderWidth: 1,
+        borderWidth: 0,
         // Shadow for depth
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },

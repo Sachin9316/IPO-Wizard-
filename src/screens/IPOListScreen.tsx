@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, Alert, ActivityIndicator, TextInput, TouchableOpacity } from 'react-native';
+import { Svg, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { ClipboardList, LogIn, Search } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { IPOData } from '../types/ipo';
 import { IPOCard } from '../components/IPOCard';
 import { SkeletonIPOCard } from '../components/SkeletonIPOCard';
 import { EmptyState } from '../components/EmptyState';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { fetchMainboardIPOs, fetchSMEIPOs, fetchListedIPOs, fetchWatchlist } from '../services/api';
 import { mapBackendToFrontend } from '../utils/mapper';
 import { useAuth } from '../context/AuthContext';
@@ -200,14 +201,6 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
         }
     }, [loadData, type]);
 
-    // Refresh when tab comes into focus (only for Watchlist to sync changes)
-    useFocusEffect(
-        React.useCallback(() => {
-            if (type === 'Watchlist') {
-                loadData(1, 0, true);
-            }
-        }, [loadData, type])
-    );
 
     const handlePress = (item: IPOData) => {
         navigation.navigate('IPODetails', { item });
@@ -269,6 +262,16 @@ export const IPOListScreen = ({ route }: { route?: { params: IPOListScreenProps 
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <Svg height="100%" width="100%" style={StyleSheet.absoluteFillObject}>
+                <Defs>
+                    <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                        <Stop offset="0" stopColor={colors.primary} stopOpacity="0.15" />
+                        <Stop offset="0.5" stopColor={colors.background} stopOpacity="1" />
+                    </LinearGradient>
+                </Defs>
+                <Rect width="100%" height="100%" fill="url(#grad)" />
+            </Svg>
+
             <IPOListHeader
                 type={type}
                 searchQuery={searchQuery}

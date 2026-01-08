@@ -4,12 +4,11 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, TextInpu
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
-import { ArrowLeft, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart, ArrowLeftRight, Info } from 'lucide-react-native';
+import { ArrowLeft, Calendar, CheckCircle, FileText, TrendingUp, Users, Heart, Info } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { toggleWatchlist } from '../../services/api';
 import { SkeletonDetail } from '../../components/SkeletonDetail';
-import { IPOSelectionModal } from '../../components/IPOSelectionModal';
 import { useUI } from '../../context/UIContext';
 import moment from 'moment';
 
@@ -19,7 +18,6 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
     const { showAlert } = useUI();
     const item: IPOData = route.params.item;
     const [loading, setLoading] = React.useState(true);
-    const [showSelectionModal, setShowSelectionModal] = React.useState(false);
 
     React.useEffect(() => {
         const timer = setTimeout(() => setLoading(false), 500);
@@ -115,12 +113,6 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{item.name}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <TouchableOpacity
-                        onPress={() => setShowSelectionModal(true)}
-                        style={[styles.closeBtn, { marginRight: 8 }]}
-                    >
-                        <ArrowLeftRight color={colors.text} size={24} />
-                    </TouchableOpacity>
                     <TouchableOpacity onPress={handleToggleWatchlist} style={styles.closeBtn}>
                         <Heart
                             color={localIsWatchlisted ? "#E91E63" : colors.text}
@@ -323,15 +315,6 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                 </ScrollView>
             )}
 
-            <IPOSelectionModal
-                visible={showSelectionModal}
-                onClose={() => setShowSelectionModal(false)}
-                onSelect={(ipo2) => {
-                    setShowSelectionModal(false);
-                    navigation.navigate('Comparison', { ipo1: item, ipo2 });
-                }}
-                currentItemId={ipoId}
-            />
         </SafeAreaView>
     );
 };

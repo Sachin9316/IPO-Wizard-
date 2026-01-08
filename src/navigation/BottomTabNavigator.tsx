@@ -5,7 +5,7 @@ import { IPOListScreen } from '../screens/IPOListScreen';
 import { PANsNavigator } from './PANsNavigator';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { CustomHeader } from '../components/CustomHeader';
-import { Home, PieChart, User, CreditCard, Newspaper } from 'lucide-react-native';
+import { Home, PieChart, User, CreditCard, Newspaper, Crown } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { InsightsScreen } from '../screens/InsightsScreen';
 
@@ -18,12 +18,26 @@ export const BottomTabNavigator = () => {
         <Tab.Navigator
             screenOptions={{
                 header: ({ route }) => {
-                    if (route.name === "Home") return <CustomHeader title="Mainboard Ipos" />;
+                    if (route.name === "Home") return <CustomHeader title="IPOs" />;
                     return <CustomHeader title={route.name} />;
                 },
                 tabBarStyle: {
                     backgroundColor: colors.card,
-                    borderTopColor: colors.border,
+                    borderTopWidth: 0,
+                    elevation: 5,
+                    shadowColor: '#000',
+                    shadowOffset: {
+                        width: 0,
+                        height: -2,
+                    },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    height: 70,
+                    paddingBottom: 10,
+                },
+                tabBarLabelStyle: {
+                    fontWeight: '600',
+                    fontSize: 12,
                 },
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.text,
@@ -33,8 +47,8 @@ export const BottomTabNavigator = () => {
                 name="Home"
                 component={TopTabNavigator}
                 options={{
-                    tabBarLabel: 'Home',
-                    tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+                    tabBarLabel: 'IPOs',
+                    tabBarIcon: ({ color, size }) => <Crown color={color} size={size} />,
                 }}
             />
             <Tab.Screen

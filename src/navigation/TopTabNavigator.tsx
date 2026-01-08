@@ -22,12 +22,17 @@ export const TopTabNavigator = () => {
         <Tab.Navigator
             screenOptions={{
                 tabBarStyle: { backgroundColor: colors.background },
-                tabBarLabelStyle: { fontWeight: 'bold' },
+                tabBarLabelStyle: { fontWeight: 'bold', textTransform: 'capitalize' },
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.text,
-                tabBarIndicatorStyle: { backgroundColor: colors.primary },
+                tabBarIndicatorStyle: {
+                    backgroundColor: colors.primary,
+                    height: 3,
+                    borderRadius: 3,
+                    marginBottom: 2
+                },
                 tabBarScrollEnabled: true,
-                tabBarItemStyle: { width: 'auto', minWidth: 100 },
+                tabBarItemStyle: { width: 'auto', minWidth: 90 },
             }}
         >
             <Tab.Screen

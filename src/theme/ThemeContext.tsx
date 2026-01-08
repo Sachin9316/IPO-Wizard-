@@ -26,11 +26,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const colors = theme === 'dark' ? {
-    background: '#121212',
+    background: '#0a0a0a', // Deeper black
     text: '#FFFFFF',
-    card: '#1E1E1E',
-    border: '#333333',
-    primary: '#BB86FC',
+    card: '#171717', // Slightly lighter than background
+    border: '#262626',
+    primary: '#A855F7', // More vibrant purple
   } : {
     background: '#FFFFFF',
     text: '#000000',
