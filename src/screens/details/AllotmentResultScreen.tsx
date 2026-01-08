@@ -10,6 +10,7 @@ import { checkAllotmentStatus, fetchMainboardIPOById, addUserPAN } from '../../s
 import { AllotmentStats } from '../../components/allotment/AllotmentStats';
 import { AllotmentResultCard } from '../../components/allotment/AllotmentResultCard';
 import { AddPANModal } from '../../components/AddPANModal';
+import { AllotmentSkeleton } from '../../components/AllotmentSkeleton';
 
 interface PANData {
     panNumber: string;
@@ -34,7 +35,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const [ipo, setIpo] = useState(initialIpo);
     const ipoName = ipo?.name || ipo?.companyName;
     const ipoLogo = ipo?.logoUrl || ipo?.icon;
-    const { user, isAuthenticated, token } = useAuth();
+    const { user, isAuthenticated, token, refreshProfile } = useAuth();
 
     // Transition state to ensure smooth navigation
     const [isTransitioning, setIsTransitioning] = useState(true);
@@ -112,7 +113,29 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         }
     };
 
-    const checkAllotment = async () => {
+    const checkAllotment = async (forceRefresh = false) => {
+        // Construct Cache Key
+        const CACHE_KEY = `ALLOTMENT_CACHE_${ipoName}`;
+
+        if (!forceRefresh) {
+            // Step 1: Try reading from cache first
+            try {
+                const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+                if (cachedData) {
+                    const parsedResults: AllotmentResult[] = JSON.parse(cachedData);
+                    console.log("Loaded results from cache:", parsedResults.length);
+                    setResults(parsedResults);
+                    setLoading(false);
+                    Animated.timing(fadeAnim, {
+                        toValue: 1, duration: 300, useNativeDriver: false, easing: Easing.out(Easing.ease)
+                    }).start();
+                    return; // EXIT EARLY - Do not hit API
+                }
+            } catch (e) {
+                console.log("Failed to load cache", e);
+            }
+        }
+
         // Don't set loading=true if we want to show existing list or just refresh it.
         // Actually for first load we might want a skeleton?
         // But here we want instant UI.
@@ -210,6 +233,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             }).start();
 
             let completedCount = 0;
+            let currentResultsState = [...initialResults]; // Keep track locally to save to cache later
 
             for (let i = 0; i < allPans.length; i++) {
                 const p = allPans[i];
@@ -228,7 +252,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                     if (response.success && Array.isArray(response.data) && response.data.length > 0) {
                         const res = response.data[0];
                         // Update this specific result in state
-                        setResults(prev => prev.map(item => {
+                        const updateFunction = (item: AllotmentResult) => {
                             if (item.panNumber === p.panNumber) {
                                 const originalPan = allPans.find(pan => pan.panNumber === p.panNumber);
 
@@ -261,24 +285,32 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                 };
                             }
                             return item;
-                        }));
+                        };
+
+                        setResults(prev => prev.map(updateFunction));
+                        currentResultsState = currentResultsState.map(updateFunction);
+
                     } else {
                         // Update as Not Found or Error
-                        setResults(prev => prev.map(item => {
+                        const updateFunction = (item: AllotmentResult) => {
                             if (item.panNumber === p.panNumber) {
                                 return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
                             }
                             return item;
-                        }));
+                        };
+                        setResults(prev => prev.map(updateFunction));
+                        currentResultsState = currentResultsState.map(updateFunction as any);
                     }
                 } catch (err) {
                     console.error(`Error checking PAN ${p.panNumber}`, err);
-                    setResults(prev => prev.map(item => {
+                    const updateFunction = (item: AllotmentResult) => {
                         if (item.panNumber === p.panNumber) {
                             return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
                         }
                         return item;
-                    }));
+                    };
+                    setResults(prev => prev.map(updateFunction));
+                    currentResultsState = currentResultsState.map(updateFunction as any);
                 }
 
                 completedCount++;
@@ -292,6 +324,14 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
             setLoading(false);
             setHasError(false);
+
+            // SAVE TO CACHE
+            try {
+                await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(currentResultsState));
+                console.log("Saved results to cache");
+            } catch (e) {
+                console.log("Failed to save cache", e);
+            }
 
         } catch (error) {
             console.error(error);
@@ -393,7 +433,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     };
 
     const onRefresh = React.useCallback(async () => {
-        await checkAllotment();
+        await checkAllotment(true); // FORCE REFRESH
     }, [ipo.registrarName]);
 
     const handleReportPress = (item: AllotmentResult) => {
@@ -446,39 +486,37 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 source: isAuthenticated ? 'CLOUD' : 'LOCAL'
             };
 
-            // 1. Save Logic
-            // 1. Save Logic
+            // 1. Save Persistent (Cloud/Local)
             if (isAuthenticated && user && token) {
-                // Save to Cloud
                 await addUserPAN(token, { panNumber: data.panNumber, name: data.name || '' });
+                await refreshProfile(); // Sync global user state
                 showToast({ message: "PAN saved to account", type: "success" });
             } else {
-                // Save Locally
                 const stored = await AsyncStorage.getItem('unsaved_pans');
                 const currentPans = stored ? JSON.parse(stored) : [];
                 const newPanObj = { id: Date.now().toString(), panNumber: data.panNumber, name: data.name };
-
-                // Double check local duplicate
-                if (currentPans.some((p: any) => p.panNumber === data.panNumber)) {
-                    // Already exists, just ignore save but continue check
-                } else {
+                if (!currentPans.some((p: any) => p.panNumber === data.panNumber)) {
                     await AsyncStorage.setItem('unsaved_pans', JSON.stringify([...currentPans, newPanObj]));
                     showToast({ message: "PAN saved locally", type: "success" });
                 }
             }
 
-            // 2. Update UI List Immediately
-            setResults(prev => [newResult, ...prev]);
+            // 2. Prepare Local List Logic
+            // We use a local variable to track the updated list so we can save it to cache at the end
+            let updatedList = [newResult, ...results];
+            setResults(updatedList);
             setAllPanCount(prev => prev + 1);
 
             // 3. Trigger Status Check
             const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar || ipo.registrarLink);
+
             if (registrarKey) {
                 // Check single PAN
                 const response = await checkAllotmentStatus(ipoName, registrarKey, [data.panNumber], true);
+
                 if (response.success && response.data.length > 0) {
                     const res = response.data[0];
-                    setResults(prev => prev.map(item => {
+                    updatedList = updatedList.map(item => {
                         if (item.panNumber === data.panNumber) {
                             return {
                                 ...item,
@@ -490,17 +528,24 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                             };
                         }
                         return item;
-                    }));
+                    });
                 } else {
-                    setResults(prev => prev.map(item =>
+                    updatedList = updatedList.map(item =>
                         item.panNumber === data.panNumber ? { ...item, status: 'NOT_APPLIED', message: 'No record found' } : item
-                    ));
+                    );
                 }
             } else {
-                setResults(prev => prev.map(item =>
+                updatedList = updatedList.map(item =>
                     item.panNumber === data.panNumber ? { ...item, status: 'UNKNOWN', message: 'Registrar not supported' } : item
-                ));
+                );
             }
+
+            // Final State Update
+            setResults(updatedList);
+
+            // 4. UPDATE CACHE
+            const CACHE_KEY = `ALLOTMENT_CACHE_${ipoName}`;
+            await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updatedList));
 
         } catch (error) {
             console.error("Add PAN Error:", error);
@@ -545,7 +590,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             </View>
 
             <View style={styles.content}>
-                {results.length > 0 ? (
+                {loading && results.length === 0 ? (
+                    <AllotmentSkeleton />
+                ) : results.length > 0 ? (
                     <View style={{ flex: 1 }}>
 
                         {/* Simple Summary */}
@@ -656,6 +703,11 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                             }
                             ListEmptyComponent={
                                 <Text style={{ textAlign: 'center', marginTop: 32, color: colors.text, opacity: 0.6 }}>No results.</Text>
+                            }
+                            ListFooterComponent={
+                                <Text style={{ textAlign: 'center', fontSize: 12, color: colors.text, opacity: 0.4, marginTop: 24, marginBottom: 16 }}>
+                                    Pull down to refresh and see updated results
+                                </Text>
                             }
                         />
 
