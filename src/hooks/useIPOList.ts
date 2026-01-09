@@ -86,7 +86,7 @@ export const useIPOList = ({ type, token, isAuthenticated }: UseIPOListProps) =>
                             triggerIPOs({ type: 'sme', page: 1, limit: 20, status: 'CLOSED' }).unwrap(),
                             triggerIPOs({ type: 'sme', page: 1, limit: 20, status: 'LISTED' }).unwrap()
                         ]);
-                        fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed].filter(ipo => !ipo.isAllotmentOut);
+                        fetchedData = [...mbClosed, ...mbListed, ...smeClosed, ...smeListed];
                         fetchedData.sort((a, b) => new Date(b.rawDates.offerEnd).getTime() - new Date(a.rawDates.offerEnd).getTime());
                     }
                 } else if (type === 'Alloted') {

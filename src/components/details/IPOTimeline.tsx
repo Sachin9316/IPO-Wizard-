@@ -14,9 +14,9 @@ const HorizontalStep = ({ label, date, status, colors, isFirst, isLast }: any) =
 
     return (
         <View style={styles.hStep}>
-            <View style={[styles.hStepCircle, { backgroundColor: isActive ? colors.primary : isCompleted ? '#4CAF50' : colors.border }]} />
+            <View style={[styles.hStepCircle, { backgroundColor: isActive || isCompleted ? colors.primary : colors.text, opacity: isActive || isCompleted ? 1 : 0.2 }]} />
             {!isLast && (
-                <View style={[styles.hStepLine, { backgroundColor: isCompleted ? '#4CAF50' : colors.border, left: '50%', width: '100%' }]} />
+                <View style={[styles.hStepLine, { backgroundColor: isActive || isCompleted ? colors.primary : colors.text, opacity: isActive || isCompleted ? 0.8 : 0.2, left: '50%', width: '100%' }]} />
             )}
             <Text style={[styles.hLabel, { color: colors.text, opacity: status === 'future' ? 0.5 : 1 }]}>{label}</Text>
             <Text style={[styles.hDate, { color: colors.text }]}>{date}</Text>
@@ -27,17 +27,10 @@ const HorizontalStep = ({ label, date, status, colors, isFirst, isLast }: any) =
 export const IPOTimeline = ({ item }: IPOTimelineProps) => {
     const { colors } = useTheme();
 
-    const getStepStatus = (rawDateStr: string | undefined, isOfferEnd = false) => {
+    const getStepStatus = (rawDateStr: string | undefined) => {
         if (!rawDateStr) return 'future';
-        const now = moment();
-        const targetDate = moment(rawDateStr);
-
-        if (isOfferEnd) {
-            const startDate = moment(item.rawDates?.offerStart);
-            if (now.isBetween(startDate, targetDate, 'day', '[]')) return 'active';
-            if (now.isAfter(targetDate, 'day')) return 'completed';
-            return 'future';
-        }
+        const now = moment().startOf('day');
+        const targetDate = moment(rawDateStr).startOf('day');
 
         if (now.isSame(targetDate, 'day')) return 'active';
         if (now.isAfter(targetDate, 'day')) return 'completed';
@@ -49,7 +42,7 @@ export const IPOTimeline = ({ item }: IPOTimelineProps) => {
             <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>Timeline</Text>
             <View style={styles.horizontalTimeline}>
                 <HorizontalStep label="Open" date={moment(item.rawDates?.offerStart).format('DD MMM')} status={getStepStatus(item.rawDates?.offerStart)} colors={colors} isFirst />
-                <HorizontalStep label="Close" date={moment(item.rawDates?.offerEnd).format('DD MMM')} status={getStepStatus(item.rawDates?.offerEnd, true)} colors={colors} />
+                <HorizontalStep label="Close" date={moment(item.rawDates?.offerEnd).format('DD MMM')} status={getStepStatus(item.rawDates?.offerEnd)} colors={colors} />
                 <HorizontalStep label="Allotment" date={moment(item.rawDates?.allotment).format('DD MMM')} status={getStepStatus(item.rawDates?.allotment)} colors={colors} />
                 <HorizontalStep label="Listing" date={moment(item.rawDates?.listing).format('DD MMM')} status={getStepStatus(item.rawDates?.listing)} colors={colors} isLast />
             </View>

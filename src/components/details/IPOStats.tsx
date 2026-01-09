@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Calendar, IndianRupee, Layers, PieChart, TrendingUp, Users } from 'lucide-react-native';
+import { Banknote, Calendar, IndianRupee, Layers, PieChart, TrendingUp, Users } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
 import moment from 'moment';
@@ -9,12 +9,12 @@ interface IPOStatsProps {
     item: IPOData;
 }
 
-const StatusBarItem = ({ label, value, valueColor, colors, icon }: any) => (
-    <View style={styles.statusBarItem}>
+const StatusBarItem = ({ label, value, valueColor, colors, icon, style, valueStyle, labelStyle }: any) => (
+    <View style={[styles.statusBarItem, { backgroundColor: colors.card }, style]}>
         {icon}
         <View style={styles.statContent}>
-            <Text style={[styles.statusLabel, { color: colors.text }]}>{label}</Text>
-            <Text style={[styles.statusValue, { color: valueColor || colors.text }]} numberOfLines={1}>{value || '-'}</Text>
+            <Text style={[styles.statusLabel, { color: colors.text }, labelStyle]}>{label}</Text>
+            <Text style={[styles.statusValue, { color: valueColor || colors.text }, valueStyle]} numberOfLines={1}>{value || '-'}</Text>
         </View>
     </View>
 );
@@ -25,40 +25,95 @@ export const IPOStats = ({ item }: IPOStatsProps) => {
     return (
         <View style={styles.statsGrid}>
             <StatusBarItem
-                icon={<Calendar size={16} color={colors.text} opacity={0.6} />}
+                icon={<Calendar size={16} color={colors.text} opacity={0.4} />}
                 label="Offer Dates"
                 value={`${moment(item.rawDates?.offerStart).format('DD MMM')} - ${moment(item.rawDates?.offerEnd).format('DD MMM')}`}
                 colors={colors}
             />
             <StatusBarItem
-                icon={<IndianRupee size={16} color={colors.text} opacity={0.6} />}
+                icon={<IndianRupee size={16} color={colors.text} opacity={0.4} />}
                 label="Price Range"
                 value={item.priceRange}
                 colors={colors}
             />
             <StatusBarItem
-                icon={<Layers size={16} color={colors.text} opacity={0.6} />}
+                icon={<Layers size={16} color={colors.text} opacity={0.4} />}
                 label="Lot Size"
-                value={item.lotSize}
+                value={(
+                    <Text>
+                        {item.lotSize}{' '}
+                        <Text style={{ fontSize: 10, opacity: 0.7 }}>/ lot</Text>
+                    </Text>
+                )}
                 colors={colors}
             />
             <StatusBarItem
-                icon={<PieChart size={16} color={colors.text} opacity={0.6} />}
+                icon={<PieChart size={16} color={colors.text} opacity={0.4} />}
                 label="Issue Size"
                 value={item.issueSize}
                 colors={colors}
             />
             <StatusBarItem
-                icon={<TrendingUp size={16} color={item.gmp?.includes('+') ? '#4CAF50' : colors.text} opacity={0.8} />}
+                icon={<TrendingUp size={16} color={item.gmp?.includes('+') ? '#4CAF50' : colors.text} opacity={item.gmp?.includes('+') ? 1 : 0.4} />}
                 label="GMP"
                 value={item.gmp}
                 valueColor={item.gmp?.includes('+') ? '#4CAF50' : undefined}
                 colors={colors}
             />
             <StatusBarItem
-                icon={<Users size={16} color={colors.text} opacity={0.6} />}
+                icon={<Users size={16} color={colors.text} opacity={0.4} />}
                 label="Subs."
                 value={item.subscription}
+                colors={colors}
+            />
+            <StatusBarItem
+                icon={<Banknote size={20} color="#4CAF50" opacity={0.8} />}
+                label="Est. Profit"
+                valueColor="#4CAF50"
+                style={{ width: '100%' }}
+                valueStyle={{ fontSize: 18, marginTop: 2 }}
+                value={(() => {
+                    const clean = (str: string) => (str || '').replace(/,/g, '');
+
+                    // 1. Parse Lot Size
+                    const lot = parseFloat(clean(item.lotSize || '').match(/(\d+(\.\d+)?)/)?.[0] || '0');
+                    if (!lot) return '-';
+
+                    // 2. Try User's Formula: GMP % of Max Lot Price
+                    // Max Price from "100-120" -> 120
+                    const prices = clean(item.priceRange || '').match(/(\d+(\.\d+)?)/g)?.map(Number) || [];
+                    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+
+                    // GMP Percentage from "₹ 50 (10%)" -> 10
+                    const gmpPercentMatch = (item.gmp || '').match(/\(([\d.]+)%\)/) || (item.gmp || '').match(/([\d.]+)%/);
+                    const gmpPercent = gmpPercentMatch ? parseFloat(gmpPercentMatch[1]) : null;
+
+                    if (maxPrice && gmpPercent !== null) {
+                        const profit = maxPrice * lot * (gmpPercent / 100);
+                        return (
+                            <Text>
+                                {`₹ ${profit.toLocaleString('en-IN', { maximumFractionDigits: 0 })} `}
+                                <Text style={{ fontSize: 12, opacity: 0.7 }}>/ lot</Text>
+                            </Text>
+                        );
+                    }
+
+                    // 3. Fallback: Absolute GMP * Lot Size
+                    // "₹ 50 (10%)" -> extract "50" (first number)
+                    const gmpAbsMatch = clean(item.gmp || '').match(/(\d+(\.\d+)?)/);
+                    const gmpAbs = gmpAbsMatch ? parseFloat(gmpAbsMatch[0]) : null;
+
+                    if (gmpAbs !== null) {
+                        return (
+                            <Text>
+                                {`₹ ${(gmpAbs * lot).toLocaleString('en-IN', { maximumFractionDigits: 0 })} `}
+                                <Text style={{ fontSize: 12, opacity: 0.7 }}>/ lot</Text>
+                            </Text>
+                        );
+                    }
+
+                    return '-';
+                })()}
                 colors={colors}
             />
         </View>

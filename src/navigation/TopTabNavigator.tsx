@@ -30,8 +30,9 @@ export const TopTabNavigator = () => {
                     borderRadius: 3,
                     marginBottom: 2
                 },
-                tabBarScrollEnabled: true,
-                tabBarItemStyle: { width: 'auto', minWidth: 90 },
+                tabBarScrollEnabled: false,
+                tabBarItemStyle: { flex: 1 },
+                tabBarIndicatorContainerStyle: { justifyContent: 'center' },
             }}
         >
             <Tab.Screen
@@ -53,12 +54,7 @@ export const TopTabNavigator = () => {
                 options={{ title: 'Closed' }}
             />
 
-            <Tab.Screen
-                name="Allotment"
-                component={IPOListScreen}
-                initialParams={{ type: 'Alloted' }}
-                options={{ title: 'Allotment' }}
-            />
+
 
             <Tab.Screen
                 name="Watchlist"

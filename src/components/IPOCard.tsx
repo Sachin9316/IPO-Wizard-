@@ -108,52 +108,60 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
                                             if (match) {
                                                 return (
                                                     <>
-                                                        <Text style={[styles.gmpValue, { color: '#4CAF50', fontSize: 16, marginRight: 4 }]}>{match[1]}</Text>
-                                                        <Text style={[styles.gmpValue, { color: '#4CAF50', fontSize: 16 }]}>{match[2]}</Text>
+                                                        <Text style={[styles.gmpValue, { color: '#4CAF50', marginRight: 4 }]}>{match[1]}</Text>
+                                                        <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{match[2]}</Text>
                                                     </>
                                                 );
                                             }
                                             // Fallback if format is different
-                                            return <Text style={[styles.gmpValue, { color: '#4CAF50', fontSize: 16 }]}>{gmpStr}</Text>;
+                                            return <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{gmpStr}</Text>;
                                         })()}
                                     </View>
                                 </View>
                             </View>
                         </View>
                     </View>
-                </View>
+                </View >
 
                 <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
                 <View style={styles.statsContainer}>
-                    {/* Single Row: Dates | Price | Lot */}
+                    {/* Compact Row: Dates | Price | Lot | Subs */}
                     <View style={styles.statRow}>
-                        <View style={styles.statItem}>
-                            <Text style={[styles.statLabel, { color: colors.text }]}>OFFER DATES</Text>
+                        <View style={[styles.statItem, { flex: 1.3 }]}>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>DATES</Text>
                             <Text style={[styles.statValue, { color: colors.text }]}>{item.dates.offerStart}-{item.dates.offerEnd}</Text>
                         </View>
 
-                        {/* Vertical Divider */}
-                        <View style={{ width: 1, height: '80%', backgroundColor: colors.border, marginHorizontal: 8 }} />
+                        <View style={styles.verticalDivider} />
 
-                        <View style={[styles.statItem, { alignItems: 'center' }]}>
-                            <Text style={[styles.statLabel, { color: colors.text }]}>PRICE RANGE</Text>
+                        <View style={[styles.statItem, { flex: 1.2 }]}>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>PRICE</Text>
                             <Text style={[styles.statValue, { color: colors.text }]}>{item.priceRange}</Text>
                         </View>
 
-                        {/* Vertical Divider */}
-                        <View style={{ width: 1, height: '80%', backgroundColor: colors.border, marginHorizontal: 8 }} />
+                        <View style={styles.verticalDivider} />
 
-                        <View style={[styles.statItem, { alignItems: 'flex-end' }]}>
-                            <Text style={[styles.statLabel, { color: colors.text }]}>LOT SIZE</Text>
+                        <View style={[styles.statItem, { flex: 1.0 }]}>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>LOT</Text>
                             <Text style={[styles.statValue, { color: colors.text }]}>
-                                {item.maxPrice && (
-                                    <Text style={{ fontSize: 16, fontWeight: '700' }}>
-                                        ₹{Math.floor(item.maxPrice * parseInt(item.lotSize))}/
+                                {item.maxPrice ? (
+                                    <Text style={{ textAlign: 'center' }}>
+                                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
+                                            ₹{Math.floor(item.maxPrice * parseInt(item.lotSize))}
+                                        </Text>
                                     </Text>
+                                ) : (
+                                    item.lotSize
                                 )}
-                                {item.lotSize}
                             </Text>
+                        </View>
+
+                        <View style={styles.verticalDivider} />
+
+                        <View style={[styles.statItem, { flex: 0.8 }]}>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>SUBS</Text>
+                            <Text style={[styles.statValue, { color: colors.text }]}>{item.subscription || 'N/A'}</Text>
                         </View>
                     </View>
                 </View>
@@ -163,7 +171,7 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
                         * GMP is based on market rumors and trends. It is for informational purposes only and does not guarantee the actual listing price.
                     </Text>
                 </View>
-            </TouchableOpacity>
+            </TouchableOpacity >
         </Animated.View>
     );
 };
@@ -183,10 +191,10 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         padding: 12,
-        alignItems: 'flex-start',
+        alignItems: 'center',
     },
     logoContainer: {
-        marginRight: 12,
+        marginRight: 10,
     },
     logoplaceholder: {
         width: 44,
@@ -202,12 +210,12 @@ const styles = StyleSheet.create({
     titleRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start', // Align to top
+        alignItems: 'center',
     },
     title: {
-        fontSize: 15,
-        fontWeight: '600',
-        marginBottom: 4,
+        fontSize: 17,
+        fontWeight: '700',
+        marginBottom: 2,
     },
     allotmentBadge: {
         paddingHorizontal: 6,
@@ -244,39 +252,48 @@ const styles = StyleSheet.create({
     },
     divider: {
         height: 1,
-        opacity: 0.5,
+        marginHorizontal: 16,
+        opacity: 0.15,
     },
     statsContainer: {
-        padding: 12,
-        paddingVertical: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
     },
     statRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
     },
     statItem: {
         flex: 1,
-        // alignItems set inline
+        alignItems: 'center',
+    },
+    verticalDivider: {
+        width: 1,
+        height: 24,
+        backgroundColor: '#E0E0E0',
+        opacity: 0.15,
+        marginHorizontal: 4,
     },
     statLabel: {
-        fontSize: 9,
+        fontSize: 11,
         opacity: 0.6,
         fontWeight: '500',
-        marginBottom: 2,
+        marginBottom: 4,
         letterSpacing: 0.5,
+        textAlign: 'center',
     },
     statValue: {
         fontSize: 13,
-        fontWeight: '500',
+        fontWeight: '600',
+        textAlign: 'center',
     },
     gmpLabel: {
-        fontSize: 10,
+        fontSize: 11,
         opacity: 0.6,
         fontWeight: '600',
     },
     gmpValue: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
     },
     disclaimerContainer: {

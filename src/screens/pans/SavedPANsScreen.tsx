@@ -10,7 +10,7 @@ import { addUserPAN, deleteUserPAN, updateUserPAN } from '../../services/api'; /
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUI } from '../../context/UIContext';
 import { usePreferences } from '../../context/PreferencesContext';
-import { SkeletonPANCard } from '../../components/SkeletonPANCard';
+
 
 interface PANData {
     id: string; // For local: timestamp. For cloud: _id or panNumber? API uses panNumber for delete.
@@ -262,13 +262,7 @@ export const SavedPANsScreen = () => {
                 )}
             </View>
 
-            {isLoading && !refreshing ? (
-                <View style={{ padding: 16 }}>
-                    {
-                        Array.from({ length: 6 }).map((_, index) => <SkeletonPANCard key={index} />)
-                    }
-                </View>
-            ) : null}
+
 
             <FlatList
                 data={[]}

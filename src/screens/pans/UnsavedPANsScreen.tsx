@@ -10,7 +10,7 @@ import { addUserPAN } from '../../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useUI } from '../../context/UIContext';
 import { usePreferences } from '../../context/PreferencesContext';
-import { SkeletonPANCard } from '../../components/SkeletonPANCard';
+
 
 interface PANData {
     id: string;
@@ -186,13 +186,7 @@ export const UnsavedPANsScreen = () => {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
 
-            {isLoading ? (
-                <View style={{ padding: 16 }}>
-                    <SkeletonPANCard />
-                    <SkeletonPANCard />
-                    <SkeletonPANCard />
-                </View>
-            ) : null}
+
 
             {pans.length === 0 ? (
                 <View style={styles.emptyContainer}>
