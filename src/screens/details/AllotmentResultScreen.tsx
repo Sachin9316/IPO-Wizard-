@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Animated, Easing, Share, RefreshControl, Alert, InteractionManager } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Animated, Easing, Share, RefreshControl, Alert, InteractionManager, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { XCircle } from 'lucide-react-native';
@@ -9,7 +9,7 @@ import { useUI } from '../../context/UIContext';
 import { checkAllotmentStatus, fetchMainboardIPOById, addUserPAN } from '../../services/api';
 import { AllotmentStats } from '../../components/allotment/AllotmentStats';
 import { AllotmentResultCard } from '../../components/allotment/AllotmentResultCard';
-import { AddPANModal } from '../../components/AddPANModal';
+import { AddPANBottomSheet } from '../../components/AddPANBottomSheet';
 import { AllotmentSkeleton } from '../../components/AllotmentSkeleton';
 import { AllotmentHeader } from '../../components/allotment/AllotmentHeader';
 import { AllotmentFilterHeader } from '../../components/allotment/AllotmentFilterHeader';
@@ -50,7 +50,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        const task = InteractionManager.runAfterInteractions(async () => {
+        const runTask = async () => {
             setIsTransitioning(false);
             const syncIpoData = async () => {
                 if (initialIpo?._id) {
@@ -65,8 +65,15 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 }
             };
             await syncIpoData();
-        });
-        return () => task.cancel();
+        };
+
+        if (Platform.OS === 'web') {
+            runTask();
+            return () => { };
+        } else {
+            const task = InteractionManager.runAfterInteractions(runTask);
+            return () => task.cancel();
+        }
     }, [initialIpo?._id]);
 
     useEffect(() => {
@@ -91,18 +98,63 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const checkAllotment = async (forceRefresh = false, skipApiCheck = false) => {
         const CACHE_KEY = `ALLOTMENT_CACHE_${ipoName}`;
 
-        // 1. Try Cache First (if not forcing)
+        // 1. Load PANs (Moved to top to validate cache)
+        let localPans: PANData[] = [];
+        const stored = await AsyncStorage.getItem('unsaved_pans');
+        if (stored) {
+            const parsed = JSON.parse(stored);
+            localPans = parsed.map((p: any) => ({ panNumber: p.panNumber, name: p.name, source: 'LOCAL' as const }));
+        }
+
+        let cloudPans: PANData[] = [];
+        if (isAuthenticated && user?.panDocuments) {
+            cloudPans = user.panDocuments.map((p: any) => ({ panNumber: p.panNumber, name: p.name, source: 'CLOUD' as const }));
+        }
+
+        const allPansMap = new Map<string, PANData>();
+        [...localPans, ...cloudPans].forEach(p => {
+            if (allPansMap.has(p.panNumber)) {
+                if (p.source === 'CLOUD') allPansMap.set(p.panNumber, p);
+            } else {
+                allPansMap.set(p.panNumber, p);
+            }
+        });
+        const allPans = Array.from(allPansMap.values());
+        setAllPanCount(allPans.length);
+
+        if (allPans.length === 0) {
+            setLoading(false);
+            setResults([]); // Ensure results are cleared if no PANs
+            return;
+        }
+
+        // 2. Try Cache First (Validate against current PANs)
         if (!forceRefresh && !skipApiCheck) {
             try {
                 const cachedData = await AsyncStorage.getItem(CACHE_KEY);
                 if (cachedData) {
                     const parsedResults: AllotmentResult[] = JSON.parse(cachedData);
-                    setResults(parsedResults);
-                    setLoading(false);
-                    Animated.timing(fadeAnim, {
-                        toValue: 1, duration: 300, useNativeDriver: false, easing: Easing.out(Easing.ease)
-                    }).start();
-                    return;
+
+                    // Critical Fix: Filter cache to only include current PANs
+                    const validCache = parsedResults.filter(r => allPansMap.has(r.panNumber));
+
+                    // Also update names/sources from current PANs to ensure freshness
+                    const refreshedCache = validCache.map(r => {
+                        const current = allPansMap.get(r.panNumber);
+                        return { ...r, name: current?.name || r.name, source: current?.source || r.source };
+                    });
+
+                    // Only return early if we have a result for EVERY current PAN
+                    // And checking if we shouldn't force refresh for any reason?
+                    // Let's just use the merge logic if counts mismatch.
+                    if (refreshedCache.length === allPans.length) {
+                        setResults(refreshedCache);
+                        setLoading(false);
+                        Animated.timing(fadeAnim, {
+                            toValue: 1, duration: 300, useNativeDriver: false, easing: Easing.out(Easing.ease)
+                        }).start();
+                        return;
+                    }
                 }
             } catch (e) { console.log("Failed to load cache", e); }
         }
@@ -113,34 +165,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             const rawRegistrarName = ipo.registrarName || ipo.registrar || ipo.registrarLink;
             const registrarKey = getRegistrarKey(rawRegistrarName);
 
-            // 2. Load PANs
-            let localPans: PANData[] = [];
-            const stored = await AsyncStorage.getItem('unsaved_pans');
-            if (stored) {
-                const parsed = JSON.parse(stored);
-                localPans = parsed.map((p: any) => ({ panNumber: p.panNumber, name: p.name, source: 'LOCAL' as const }));
-            }
-
-            let cloudPans: PANData[] = [];
-            if (isAuthenticated && user?.panDocuments) {
-                cloudPans = user.panDocuments.map((p: any) => ({ panNumber: p.panNumber, name: p.name, source: 'CLOUD' as const }));
-            }
-
-            const allPansMap = new Map<string, PANData>();
-            [...localPans, ...cloudPans].forEach(p => {
-                if (allPansMap.has(p.panNumber)) {
-                    if (p.source === 'CLOUD') allPansMap.set(p.panNumber, p);
-                } else {
-                    allPansMap.set(p.panNumber, p);
-                }
-            });
-            const allPans = Array.from(allPansMap.values());
-            setAllPanCount(allPans.length);
-
-            if (allPans.length === 0) {
-                setLoading(false);
-                return;
-            }
+            // (Old Step 2 removed)
 
             // 3. Prepare Initial Results (Merge with Cache/Existing to avoid resetting to WAITING if skipping API)
             let cachedResults: AllotmentResult[] = [];
@@ -365,7 +390,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 )}
             </View>
 
-            <AddPANModal visible={modalVisible} onClose={() => setModalVisible(false)} onSubmit={handleAddPan} requireName={true} title="Add New PAN" />
+            <AddPANBottomSheet visible={modalVisible} onClose={() => setModalVisible(false)} onSubmit={handleAddPan} requireName={true} />
         </View>
     );
 };

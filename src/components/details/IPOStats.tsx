@@ -1,9 +1,14 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useWindowDimensions, Platform } from 'react-native';
 import { Banknote, Calendar, IndianRupee, Layers, PieChart, TrendingUp, Users } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
 import moment from 'moment';
+
+const GAP = 12;
+const PADDING = 16;
+// Scrollbar width on web can mess up exact calculations
+const SCROLLBAR_WIDTH = Platform.OS === 'web' ? 18 : 0;
 
 interface IPOStatsProps {
     item: IPOData;
@@ -21,6 +26,15 @@ const StatusBarItem = ({ label, value, valueColor, colors, icon, style, valueSty
 
 export const IPOStats = ({ item }: IPOStatsProps) => {
     const { colors } = useTheme();
+    const { width } = useWindowDimensions();
+
+    const isTablet = width >= 768;
+    const numColumns = isTablet ? 4 : 2;
+    // Use floor to avoid sub-pixel rounding causing wrap. Subtracting 1 item gap effectively.
+    const cardWidth = Math.floor((width - (PADDING * 2) - SCROLLBAR_WIDTH - (GAP * (numColumns - 1))) / numColumns);
+
+    // Helper to inject calculation logic into styles
+    const itemStyle = { width: cardWidth };
 
     return (
         <View style={styles.statsGrid}>
@@ -29,12 +43,14 @@ export const IPOStats = ({ item }: IPOStatsProps) => {
                 label="Offer Dates"
                 value={`${moment(item.rawDates?.offerStart).format('DD MMM')} - ${moment(item.rawDates?.offerEnd).format('DD MMM')}`}
                 colors={colors}
+                style={itemStyle}
             />
             <StatusBarItem
                 icon={<IndianRupee size={16} color={colors.text} opacity={0.4} />}
                 label="Price Range"
                 value={item.priceRange}
                 colors={colors}
+                style={itemStyle}
             />
             <StatusBarItem
                 icon={<Layers size={16} color={colors.text} opacity={0.4} />}
@@ -46,12 +62,14 @@ export const IPOStats = ({ item }: IPOStatsProps) => {
                     </Text>
                 )}
                 colors={colors}
+                style={itemStyle}
             />
             <StatusBarItem
                 icon={<PieChart size={16} color={colors.text} opacity={0.4} />}
                 label="Issue Size"
                 value={item.issueSize}
                 colors={colors}
+                style={itemStyle}
             />
             <StatusBarItem
                 icon={<TrendingUp size={16} color={item.gmp?.includes('+') ? '#4CAF50' : colors.text} opacity={item.gmp?.includes('+') ? 1 : 0.4} />}
@@ -59,18 +77,20 @@ export const IPOStats = ({ item }: IPOStatsProps) => {
                 value={item.gmp}
                 valueColor={item.gmp?.includes('+') ? '#4CAF50' : undefined}
                 colors={colors}
+                style={itemStyle}
             />
             <StatusBarItem
                 icon={<Users size={16} color={colors.text} opacity={0.4} />}
                 label="Subs."
                 value={item.subscription}
                 colors={colors}
+                style={itemStyle}
             />
             <StatusBarItem
                 icon={<Banknote size={20} color="#4CAF50" opacity={0.8} />}
                 label="Est. Profit"
                 valueColor="#4CAF50"
-                style={{ width: '100%' }}
+                style={{ ...itemStyle, width: isTablet ? cardWidth * 2 + GAP : cardWidth }}
                 valueStyle={{ fontSize: 18, marginTop: 2 }}
                 value={(() => {
                     const clean = (str: string) => (str || '').replace(/,/g, '');
@@ -124,13 +144,11 @@ const styles = StyleSheet.create({
     statsGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        paddingHorizontal: 16,
+        paddingHorizontal: PADDING,
         paddingBottom: 16,
-        gap: 12,
-        justifyContent: 'space-between',
+        gap: GAP,
     },
     statusBarItem: {
-        width: '48%',
         marginBottom: 8,
         flexDirection: 'row',
         alignItems: 'center',

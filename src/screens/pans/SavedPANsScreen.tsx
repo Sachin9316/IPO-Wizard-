@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { AddPANModal } from '../../components/AddPANModal';
+import { AddPANBottomSheet } from '../../components/AddPANBottomSheet';
 import { Plus, CreditCard, Trash2, Edit, Cloud, CloudOff, LogIn } from 'lucide-react-native';
 import { useAuth } from '../../context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -278,16 +278,6 @@ export const SavedPANsScreen = () => {
                             </View>
                         )}
 
-                        {(unsavedPans.length > 0) && (
-                            <View style={{ marginBottom: 20 }}>
-                                <Text style={[styles.sectionTitle, { color: colors.text }]}>Unsaved PANs ({unsavedPans.length})</Text>
-                                <Text style={{ fontSize: 12, color: colors.text, opacity: 0.5, marginBottom: 10 }}>Only stored on this device</Text>
-                                {unsavedPans.map((pan: any) => (
-                                    <View key={pan.id}>{renderPANCard({ item: pan, isCloud: false })}</View>
-                                ))}
-                            </View>
-                        )}
-
                         {isAuthenticated && cloudPans.length === 0 && unsavedPans.length === 0 && (
                             <View style={styles.emptyContainer}>
                                 <CreditCard size={64} color={colors.text} style={{ opacity: 0.3 }} />
@@ -321,7 +311,7 @@ export const SavedPANsScreen = () => {
                 <Plus size={28} color="#fff" />
             </TouchableOpacity>
 
-            <AddPANModal
+            <AddPANBottomSheet
                 visible={modalVisible}
                 onClose={() => {
                     setModalVisible(false);

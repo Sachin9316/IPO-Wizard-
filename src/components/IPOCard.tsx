@@ -129,38 +129,52 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
                     {/* Compact Row: Dates | Price | Lot | Subs */}
                     <View style={styles.statRow}>
                         <View style={[styles.statItem, { flex: 1.3 }]}>
-                            <Text style={[styles.statLabel, { color: colors.text }]}>DATES</Text>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>Offer Dates</Text>
                             <Text style={[styles.statValue, { color: colors.text }]}>{item.dates.offerStart}-{item.dates.offerEnd}</Text>
                         </View>
 
                         <View style={styles.verticalDivider} />
 
                         <View style={[styles.statItem, { flex: 1.2 }]}>
-                            <Text style={[styles.statLabel, { color: colors.text }]}>PRICE</Text>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>Price</Text>
                             <Text style={[styles.statValue, { color: colors.text }]}>{item.priceRange}</Text>
                         </View>
 
                         <View style={styles.verticalDivider} />
 
                         <View style={[styles.statItem, { flex: 1.0 }]}>
-                            <Text style={[styles.statLabel, { color: colors.text }]}>LOT</Text>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>Lot Price</Text>
                             <Text style={[styles.statValue, { color: colors.text }]}>
-                                {item.maxPrice ? (
-                                    <Text style={{ textAlign: 'center' }}>
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>
-                                            ₹{Math.floor(item.maxPrice * parseInt(item.lotSize))}
-                                        </Text>
-                                    </Text>
-                                ) : (
-                                    item.lotSize
-                                )}
+                                {(() => {
+                                    // Robust Price Calculation
+                                    const clean = (str: string) => (str || '').replace(/,/g, '');
+                                    const prices = clean(item.priceRange || '').match(/(\d+(\.\d+)?)/g)?.map(Number) || [];
+                                    const maxPrice = prices.length > 0 ? Math.max(...prices) : (item.maxPrice || 0);
+
+                                    // Robust Lot Size Parsing
+                                    const lotSizeStr = String(item.lotSize || '');
+                                    const lotSize = parseFloat(clean(lotSizeStr).match(/(\d+)/)?.[0] || '0');
+
+                                    const lotVal = maxPrice * lotSize;
+
+                                    if (lotVal > 0) {
+                                        return (
+                                            <Text style={{ textAlign: 'center' }}>
+                                                <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>
+                                                    ₹{lotVal.toLocaleString('en-IN')}
+                                                </Text>
+                                            </Text>
+                                        );
+                                    }
+                                    return item.lotSize;
+                                })()}
                             </Text>
                         </View>
 
                         <View style={styles.verticalDivider} />
 
                         <View style={[styles.statItem, { flex: 0.8 }]}>
-                            <Text style={[styles.statLabel, { color: colors.text }]}>SUBS</Text>
+                            <Text style={[styles.statLabel, { color: colors.text }]}>Subs</Text>
                             <Text style={[styles.statValue, { color: colors.text }]}>{item.subscription || 'N/A'}</Text>
                         </View>
                     </View>
@@ -214,7 +228,7 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 17,
-        fontWeight: '700',
+        fontWeight: '600',
         marginBottom: 2,
     },
     allotmentBadge: {
@@ -284,7 +298,7 @@ const styles = StyleSheet.create({
     },
     statValue: {
         fontSize: 13,
-        fontWeight: '600',
+        fontWeight: '500',
         textAlign: 'center',
     },
     gmpLabel: {

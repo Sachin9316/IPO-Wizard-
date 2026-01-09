@@ -55,16 +55,19 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         padding: 8,
         alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 1,
     },
     statCount: {
         fontSize: 16,
         fontWeight: 'bold',
-        marginBottom: 2
+        marginBottom: 2,
+        textAlign: 'center'
     },
     statLabel: {
         fontSize: 9,
         fontWeight: '600',
-        textTransform: 'uppercase'
+        textTransform: 'uppercase',
+        textAlign: 'center'
     },
 });

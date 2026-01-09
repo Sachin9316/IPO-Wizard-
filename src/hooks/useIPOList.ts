@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { InteractionManager } from 'react-native';
+import { InteractionManager, Platform } from 'react-native';
 import { IPOData } from '../types/ipo';
 import { useLazyGetIPOsQuery, useLazyGetWatchlistQuery } from '../services/ipoApi';
 
@@ -27,7 +27,7 @@ export const useIPOList = ({ type, token, isAuthenticated }: UseIPOListProps) =>
     }, [ipos]);
 
     const loadData = useCallback((pageNum: number, stage: number, shouldRefresh = false) => {
-        InteractionManager.runAfterInteractions(async () => {
+        const executeLoad = async () => {
             try {
                 if (pageNum === 1 && stage === 0) {
                     if (iposRef.current.length === 0 && !shouldRefresh) {
@@ -136,7 +136,13 @@ export const useIPOList = ({ type, token, isAuthenticated }: UseIPOListProps) =>
                 setRefreshing(false);
                 setLoadingMore(false);
             }
-        });
+        };
+
+        if (Platform.OS === 'web') {
+            executeLoad();
+        } else {
+            InteractionManager.runAfterInteractions(executeLoad);
+        }
     }, [type, token, isAuthenticated, triggerIPOs, triggerWatchlist]);
 
     useEffect(() => {

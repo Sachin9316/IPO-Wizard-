@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { AddPANModal } from '../../components/AddPANModal';
+import { AddPANBottomSheet } from '../../components/AddPANBottomSheet';
 import { Plus, CreditCard, Trash2, Edit, CloudUpload } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
@@ -211,7 +211,7 @@ export const UnsavedPANsScreen = () => {
                 <Plus size={28} color="#fff" />
             </TouchableOpacity>
 
-            <AddPANModal
+            <AddPANBottomSheet
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
                 onSubmit={handleAddPAN}
