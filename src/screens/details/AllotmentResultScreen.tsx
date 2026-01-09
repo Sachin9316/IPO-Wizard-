@@ -184,10 +184,15 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
             for (let i = 0; i < allPans.length; i++) {
                 const p = allPans[i];
+
+                const previousState = mergedResults.find(r => r.panNumber === p.panNumber);
+                const isCached = previousState && ['ALLOTTED', 'NOT_ALLOTTED', 'NOT_APPLIED'].includes(previousState.status);
+                const shouldForce = !isCached;
+
                 setResults(prev => prev.map(item => item.panNumber === p.panNumber ? { ...item, status: 'CHECKING', message: 'Checking...' } : item));
 
                 try {
-                    const response = await checkAllotmentStatus(ipoName, registrarKey, [p.panNumber]);
+                    const response = await checkAllotmentStatus(ipoName, registrarKey, [p.panNumber], shouldForce);
                     const updateFunction = (item: AllotmentResult) => {
                         if (item.panNumber === p.panNumber) {
                             if (response.success && response.data.length > 0) {
