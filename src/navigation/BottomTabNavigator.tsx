@@ -56,7 +56,7 @@ export const BottomTabNavigator = () => {
                 name="News"
                 component={NewsScreen}
                 options={{
-                    header: () => <CustomHeader title="IPO News" showSearch={false} />,
+                    header: () => <CustomHeader title="IPO News" showSearch={false} showFilter={false} />,
                     tabBarLabel: 'News',
                     tabBarIcon: ({ color, size }) => (
                         <Newspaper color={color} size={size} />

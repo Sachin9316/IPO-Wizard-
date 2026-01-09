@@ -1,4 +1,6 @@
 import React from 'react';
+import { Provider } from 'react-redux';
+import { store } from './src/store';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -51,15 +53,17 @@ const AppContent = () => {
 export default function App() {
     return (
         <SafeAreaProvider>
-            <ThemeProvider>
-                <PreferencesProvider>
-                    <UIProvider>
-                        <AuthProvider>
-                            <AppContent />
-                        </AuthProvider>
-                    </UIProvider>
-                </PreferencesProvider>
-            </ThemeProvider>
+            <Provider store={store}>
+                <ThemeProvider>
+                    <PreferencesProvider>
+                        <UIProvider>
+                            <AuthProvider>
+                                <AppContent />
+                            </AuthProvider>
+                        </UIProvider>
+                    </PreferencesProvider>
+                </ThemeProvider>
+            </Provider>
         </SafeAreaProvider>
     );
 }

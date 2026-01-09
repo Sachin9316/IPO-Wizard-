@@ -10,6 +10,7 @@ import { addUserPAN } from '../../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useUI } from '../../context/UIContext';
 import { usePreferences } from '../../context/PreferencesContext';
+import { SkeletonPANCard } from '../../components/SkeletonPANCard';
 
 interface PANData {
     id: string;
@@ -29,11 +30,12 @@ export const UnsavedPANsScreen = () => {
 
     useFocusEffect(
         React.useCallback(() => {
-            loadPans();
+            loadPans(true); // Silent refresh
         }, [])
     );
 
-    const loadPans = async () => {
+    const loadPans = async (silent = false) => {
+        if (!silent) setIsLoading(true);
         try {
             const stored = await AsyncStorage.getItem('unsaved_pans');
             if (stored) {
@@ -44,12 +46,14 @@ export const UnsavedPANsScreen = () => {
         } catch (e) {
             console.error(e);
             setPans([]);
+        } finally {
+            if (!silent) setIsLoading(false);
         }
     };
 
     // Reload when auth changes (e.g. after login/sync)
     useEffect(() => {
-        loadPans();
+        loadPans(false); // Show loading skeleton on auth change
     }, [isAuthenticated]);
 
     const savePans = async (newPans: PANData[]) => {
@@ -182,7 +186,13 @@ export const UnsavedPANsScreen = () => {
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['bottom']}>
 
-            {isLoading && <ActivityIndicator size="small" color={colors.primary} style={{ margin: 10 }} />}
+            {isLoading ? (
+                <View style={{ padding: 16 }}>
+                    <SkeletonPANCard />
+                    <SkeletonPANCard />
+                    <SkeletonPANCard />
+                </View>
+            ) : null}
 
             {pans.length === 0 ? (
                 <View style={styles.emptyContainer}>

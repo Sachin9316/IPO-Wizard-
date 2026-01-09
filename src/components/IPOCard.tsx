@@ -22,12 +22,12 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 500,
-                useNativeDriver: false,
+                useNativeDriver: true,
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
                 duration: 500,
-                useNativeDriver: false,
+                useNativeDriver: true,
             })
         ]).start();
 

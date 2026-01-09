@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, TextInput, Animated, Easing, Share, Image, RefreshControl, Alert, InteractionManager } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Animated, Easing, Share, RefreshControl, Alert, InteractionManager } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { ArrowLeft, CheckCircle, XCircle, MinusCircle, User as UserIcon, Share2, Search, Trophy, MoreVertical, RefreshCw, ExternalLink, Cloud, Smartphone, Globe, Plus } from 'lucide-react-native';
+import { XCircle } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
@@ -11,6 +11,8 @@ import { AllotmentStats } from '../../components/allotment/AllotmentStats';
 import { AllotmentResultCard } from '../../components/allotment/AllotmentResultCard';
 import { AddPANModal } from '../../components/AddPANModal';
 import { AllotmentSkeleton } from '../../components/AllotmentSkeleton';
+import { AllotmentHeader } from '../../components/allotment/AllotmentHeader';
+import { AllotmentFilterHeader } from '../../components/allotment/AllotmentFilterHeader';
 
 interface PANData {
     panNumber: string;
@@ -29,15 +31,13 @@ interface AllotmentResult {
 }
 
 export const AllotmentResultScreen = ({ route, navigation }: any) => {
-    const insets = useSafeAreaInsets(); // Get safe area insets
+    const insets = useSafeAreaInsets();
     const { colors } = useTheme();
     const { ipo: initialIpo } = route.params;
     const [ipo, setIpo] = useState(initialIpo);
     const ipoName = ipo?.name || ipo?.companyName;
-    const ipoLogo = ipo?.logoUrl || ipo?.icon;
     const { user, isAuthenticated, token, refreshProfile } = useAuth();
 
-    // Transition state to ensure smooth navigation
     const [isTransitioning, setIsTransitioning] = useState(true);
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
@@ -47,22 +47,16 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const [refreshingPans, setRefreshingPans] = useState<Set<string>>(new Set());
     const [hasError, setHasError] = useState(false);
 
-    // Animation Values
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Wait for navigation animation continuously to finish before heavy lifting
         const task = InteractionManager.runAfterInteractions(async () => {
-            // End transition - screen is fully visible now
             setIsTransitioning(false);
-
-            // Fetch fresh IPO data to get latest Registrar info
             const syncIpoData = async () => {
                 if (initialIpo?._id) {
                     try {
                         const fresh = await fetchMainboardIPOById(initialIpo._id);
                         if (fresh) {
-                            console.log('Refreshed IPO:', fresh.companyName, fresh.registrarName);
                             setIpo((prev: any) => ({ ...prev, ...fresh }));
                         }
                     } catch (e) {
@@ -72,7 +66,6 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             };
             await syncIpoData();
         });
-
         return () => task.cancel();
     }, [initialIpo?._id]);
 
@@ -81,17 +74,6 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             checkAllotment();
         }
     }, [isTransitioning, ipo.registrarName]);
-
-    // ... (rest of helper functions: getRegistrarKey, handleOpenRegistrar, checkAllotment, etc.)
-    // Note: I am NOT including the entire file content here to avoid token limit, relying on the 'StartLine/EndLine' to target the top section correctly.
-    // However, replace_file_content requires me to provide the *exact* replacement block.
-    // I need to be careful not to delete helper functions if they are in the range. 
-    // The range 30-100 contains definitions. I'll preserve them by narrowing the edit.
-
-    // Actually, I will split this into smaller edits to be safe.
-    // Edit 1: Imports and component start (using View/insets)
-    // Edit 2: State and Effects
-
 
     const getRegistrarKey = (name?: string) => {
         if (!name) return null;
@@ -106,56 +88,32 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         return null;
     };
 
-    const handleOpenRegistrar = () => {
-        if (ipo.registrarLink) {
-            const { Linking } = require('react-native');
-            Linking.openURL(ipo.registrarLink);
-        }
-    };
-
-    const checkAllotment = async (forceRefresh = false) => {
-        // Construct Cache Key
+    const checkAllotment = async (forceRefresh = false, skipApiCheck = false) => {
         const CACHE_KEY = `ALLOTMENT_CACHE_${ipoName}`;
 
-        if (!forceRefresh) {
-            // Step 1: Try reading from cache first
+        // 1. Try Cache First (if not forcing)
+        if (!forceRefresh && !skipApiCheck) {
             try {
                 const cachedData = await AsyncStorage.getItem(CACHE_KEY);
                 if (cachedData) {
                     const parsedResults: AllotmentResult[] = JSON.parse(cachedData);
-                    console.log("Loaded results from cache:", parsedResults.length);
                     setResults(parsedResults);
                     setLoading(false);
                     Animated.timing(fadeAnim, {
                         toValue: 1, duration: 300, useNativeDriver: false, easing: Easing.out(Easing.ease)
                     }).start();
-                    return; // EXIT EARLY - Do not hit API
+                    return;
                 }
-            } catch (e) {
-                console.log("Failed to load cache", e);
-            }
+            } catch (e) { console.log("Failed to load cache", e); }
         }
 
-        // Don't set loading=true if we want to show existing list or just refresh it.
-        // Actually for first load we might want a skeleton?
-        // But here we want instant UI.
-        // If results are empty, we might want to show loading?
-        // Let's rely on standard "WAITING" status in list.
-        if (results.length === 0) setLoading(true); // Only show spinner if we have absolutely nothing
+        if (results.length === 0) setLoading(true);
 
         try {
-            // Use registrarName map, fallback to registrarLink
             const rawRegistrarName = ipo.registrarName || ipo.registrar || ipo.registrarLink;
-            console.log("DEBUG: ipo string state:", JSON.stringify(ipo));
-            console.log("DEBUG: checkAllotment running with registrarName:", rawRegistrarName);
-
             const registrarKey = getRegistrarKey(rawRegistrarName);
-            console.log("DEBUG: Derived Registrar Key:", registrarKey);
 
-            // Removed early exit for missing registrarKey to allow showing PANs
-
-
-            // 1. Fetch Local PANs
+            // 2. Load PANs
             let localPans: PANData[] = [];
             const stored = await AsyncStorage.getItem('unsaved_pans');
             if (stored) {
@@ -163,23 +121,15 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 localPans = parsed.map((p: any) => ({ panNumber: p.panNumber, name: p.name, source: 'LOCAL' as const }));
             }
 
-            // 2. Fetch Cloud PANs
             let cloudPans: PANData[] = [];
             if (isAuthenticated && user?.panDocuments) {
                 cloudPans = user.panDocuments.map((p: any) => ({ panNumber: p.panNumber, name: p.name, source: 'CLOUD' as const }));
             }
 
-            // 3. Merge Unique PANs
             const allPansMap = new Map<string, PANData>();
-            // Prioritize CLOUD if duplicates exist (though logically same PAN is same PAN)
             [...localPans, ...cloudPans].forEach(p => {
-                // If it exists and new one is Cloud, overwrite? Or just keep first found.
-                // Let's keep existing logic but just set map.
                 if (allPansMap.has(p.panNumber)) {
-                    // If existing is LOCAL and new is CLOUD, update to CLOUD?
-                    if (p.source === 'CLOUD') {
-                        allPansMap.set(p.panNumber, p);
-                    }
+                    if (p.source === 'CLOUD') allPansMap.set(p.panNumber, p);
                 } else {
                     allPansMap.set(p.panNumber, p);
                 }
@@ -192,147 +142,81 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 return;
             }
 
-            // 4. Call Backend API Sequentially
-            // We iterate one by one to give user progress feedback
+            // 3. Prepare Initial Results (Merge with Cache/Existing to avoid resetting to WAITING if skipping API)
+            let cachedResults: AllotmentResult[] = [];
+            try {
+                const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+                if (cachedData) cachedResults = JSON.parse(cachedData);
+            } catch (e) { }
 
-            if (!registrarKey) {
-                const mappedResults: AllotmentResult[] = allPans.map(p => ({
-                    panNumber: p.panNumber,
-                    name: p.name,
-                    status: 'UNKNOWN' as const,
-                    units: 0,
-                    message: 'Registrar not supported',
-                    source: p.source
-                }));
-                setResults(mappedResults);
-                setLoading(false);
-                Animated.timing(fadeAnim, {
-                    toValue: 1, duration: 500, useNativeDriver: false, easing: Easing.out(Easing.ease)
-                }).start();
-                return;
-            }
+            const mergedResults: AllotmentResult[] = allPans.map(p => {
+                const existing = cachedResults.find(r => r.panNumber === p.panNumber) || results.find(r => r.panNumber === p.panNumber);
+                if (existing) {
+                    // Update name/source if changed, keep status
+                    return { ...existing, name: p.name, source: p.source, status: existing.status === 'CHECKING' ? 'WAITING' : existing.status };
+                }
+                return {
+                    panNumber: p.panNumber, name: p.name, status: 'WAITING', units: 0, message: 'Tap to check', source: p.source
+                };
+            });
 
-            // Initialize results with a "WAITING" state
-            // or just built it up. Let's fill with initial "waiting" state.
-            const initialResults: AllotmentResult[] = allPans.map(p => ({
-                panNumber: p.panNumber,
-                name: p.name,
-                status: 'WAITING', // Show as gray/loading
-                units: 0,
-                message: 'Waiting...',
-                source: p.source
-            }));
-            setResults(initialResults);
-
-            // SHOW LIST IMMEDIATELY
+            setResults(mergedResults);
             setLoading(false);
-
-            // Trigger Fade In immediately so user sees the list
             Animated.timing(fadeAnim, {
                 toValue: 1, duration: 500, useNativeDriver: false, easing: Easing.out(Easing.ease)
             }).start();
 
+            // 4. API Check Loop (Skip if requested or no registrar)
+            if (skipApiCheck || !registrarKey) {
+                // If skipping, ensuring we save the merged state to cache so we don't lose the "WAITING" entries or updates
+                AsyncStorage.setItem(CACHE_KEY, JSON.stringify(mergedResults));
+                return;
+            }
+
+            // Reset statuses to CHECKING only for those we are about to check? 
+            // Or just check everything? Logic above implied checking everything.
+            // Let's reset all to WAITING/CHECKING loop as before.
+            const initialLoopResults = mergedResults.map(r => ({ ...r, status: 'WAITING' as const, message: 'Waiting...' }));
+            setResults(initialLoopResults);
+
             let completedCount = 0;
-            let currentResultsState = [...initialResults]; // Keep track locally to save to cache later
+            let currentResultsState = [...initialLoopResults];
 
             for (let i = 0; i < allPans.length; i++) {
                 const p = allPans[i];
-
-                // Update progress "Checking..." for this item? 
-                // We'll rely on the specific card showing 'Waiting...' or we could add a 'loading' indicator to the card.
-
-                // Set current item to CHECKING
-                setResults(prev => prev.map(item =>
-                    item.panNumber === p.panNumber ? { ...item, status: 'CHECKING', message: 'Checking...' } : item
-                ));
+                setResults(prev => prev.map(item => item.panNumber === p.panNumber ? { ...item, status: 'CHECKING', message: 'Checking...' } : item));
 
                 try {
                     const response = await checkAllotmentStatus(ipoName, registrarKey, [p.panNumber]);
-
-                    if (response.success && Array.isArray(response.data) && response.data.length > 0) {
-                        const res = response.data[0];
-                        // Update this specific result in state
-                        const updateFunction = (item: AllotmentResult) => {
-                            if (item.panNumber === p.panNumber) {
-                                const originalPan = allPans.find(pan => pan.panNumber === p.panNumber);
-
-                                let finalStatus = res.status;
-                                let finalMessage = res.message || '';
-
-                                // Sanitize Technical/Backend Errors
-                                const isTechnicalError =
-                                    finalMessage.includes('browserType.launch') ||
-                                    finalMessage.includes('Executable doesn') ||
-                                    finalMessage.includes('playwright') ||
-                                    finalMessage.includes('/root/.cache/') || // Path usually indicates server error
-                                    finalMessage.includes('Target closed') ||
-                                    finalMessage.includes('Worker Request Failed');
-
-                                if (isTechnicalError) {
-                                    console.warn(`Sanitized technical error for PAN ${p.panNumber}: ${finalMessage}`);
-                                    finalStatus = 'NOT_APPLIED';
-                                    finalMessage = 'No record found';
-                                }
-
-                                return {
-                                    ...item,
-                                    status: finalStatus,
-                                    units: res.units || 0,
-                                    message: finalMessage,
-                                    // Prefer name from API (cleaned), fallback to local cache, fallback to current
-                                    name: res.name || (originalPan ? originalPan.name : item.name),
-                                    dpId: res.dpId
-                                };
-                            }
-                            return item;
-                        };
-
-                        setResults(prev => prev.map(updateFunction));
-                        currentResultsState = currentResultsState.map(updateFunction);
-
-                    } else {
-                        // Update as Not Found or Error
-                        const updateFunction = (item: AllotmentResult) => {
-                            if (item.panNumber === p.panNumber) {
-                                return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
-                            }
-                            return item;
-                        };
-                        setResults(prev => prev.map(updateFunction));
-                        currentResultsState = currentResultsState.map(updateFunction as any);
-                    }
-                } catch (err) {
-                    console.error(`Error checking PAN ${p.panNumber}`, err);
                     const updateFunction = (item: AllotmentResult) => {
                         if (item.panNumber === p.panNumber) {
-                            return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
+                            if (response.success && response.data.length > 0) {
+                                const res = response.data[0];
+                                let finalStatus = res.status;
+                                let finalMessage = res.message || '';
+                                if (finalMessage.includes('browserType.launch') || finalMessage.includes('playwright')) {
+                                    finalStatus = 'NOT_APPLIED'; finalMessage = 'No record found';
+                                }
+                                return { ...item, status: finalStatus, units: res.units || 0, message: finalMessage, name: res.name || item.name, dpId: res.dpId };
+                            } else {
+                                return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
+                            }
                         }
                         return item;
                     };
                     setResults(prev => prev.map(updateFunction));
-                    currentResultsState = currentResultsState.map(updateFunction as any);
+                    currentResultsState = currentResultsState.map(updateFunction);
+                } catch (err) {
+                    setResults(prev => prev.map(item => item.panNumber === p.panNumber ? { ...item, status: 'NOT_APPLIED', message: 'No record found' } : item));
+                    currentResultsState = currentResultsState.map(item => item.panNumber === p.panNumber ? { ...item, status: 'NOT_APPLIED', message: 'No record found' } : item as any);
                 }
 
                 completedCount++;
                 setProgress(completedCount / allPans.length);
-
-                // Small delay to prevent UI freeze and rate limiting
-                if (i < allPans.length - 1) {
-                    await new Promise(r => setTimeout(r, 500));
-                }
+                if (i < allPans.length - 1) await new Promise(r => setTimeout(r, 500));
             }
-
-            setLoading(false);
             setHasError(false);
-
-            // SAVE TO CACHE
-            try {
-                await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(currentResultsState));
-                console.log("Saved results to cache");
-            } catch (e) {
-                console.log("Failed to save cache", e);
-            }
-
+            AsyncStorage.setItem(CACHE_KEY, JSON.stringify(currentResultsState));
         } catch (error) {
             console.error(error);
             setLoading(false);
@@ -341,130 +225,44 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     };
 
     const [filterSource, setFilterSource] = useState<'ALL' | 'CLOUD' | 'LOCAL'>('ALL');
-
     const filteredResults = results.filter(item => {
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.panNumber.toLowerCase().includes(searchQuery.toLowerCase());
-
+        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.panNumber.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesSource = filterSource === 'ALL' ? true : item.source === filterSource;
-
         return matchesSearch && matchesSource;
     });
 
     const [activeMenuPan, setActiveMenuPan] = useState<string | null>(null);
 
-
-
     const handleRefreshPan = async (item: AllotmentResult) => {
-        console.log("Handle Refresh Pan Triggered for:", item.panNumber);
-        if (refreshingPans.has(item.panNumber)) {
-            console.log("Already refreshing:", item.panNumber);
-            return;
-        }
-
+        if (refreshingPans.has(item.panNumber)) return;
         const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar || ipo.registrarLink);
-        console.log("Registrar Key for Single Check:", registrarKey);
-
-        if (!registrarKey) {
-            Alert.alert(
-                "Unsupported Registrar",
-                `Automatic checking is not supported for ${ipo.registrarName || 'this registrar'}. Please check manually on their website.`
-            );
-            return;
-        }
+        if (!registrarKey) { Alert.alert("Unsupported Registrar", "Manual check required."); return; }
 
         setRefreshingPans(prev => new Set(prev).add(item.panNumber));
         try {
-            console.log("Calling API for single PAN with FORCE refresh...");
-            // Pass forceRefresh = true
             const response = await checkAllotmentStatus(ipoName, registrarKey, [item.panNumber], true);
-            console.log("Single Refresh Response:", response);
-
-            if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+            if (response.success && response.data.length > 0) {
                 const res = response.data[0];
-                setResults(prevResults => prevResults.map(r => {
-                    if (r.panNumber === item.panNumber) {
-                        let finalStatus = res.status;
-                        let finalMessage = res.message || '';
-
-                        // Sanitize Technical/Backend Errors
-                        const isTechnicalError =
-                            finalMessage.includes('browserType.launch') ||
-                            finalMessage.includes('Executable doesn') ||
-                            finalMessage.includes('playwright') ||
-                            finalMessage.includes('/root/.cache/') ||
-                            finalMessage.includes('Target closed') ||
-                            finalMessage.includes('Worker Request Failed');
-
-                        if (isTechnicalError) {
-                            console.warn(`Sanitized technical error for PAN ${item.panNumber}: ${finalMessage}`);
-                            finalStatus = 'NOT_APPLIED';
-                            finalMessage = 'No record found';
-                        }
-
-                        return {
-                            ...r,
-                            status: finalStatus,
-                            units: res.units || 0,
-                            message: finalMessage,
-                            name: res.name || r.name, // Update name if cleaned version returned
-                            dpId: res.dpId
-                        };
-                    }
-                    return r;
-                }));
-            } else {
-                console.log("Single refresh returned no valid data (Status remains same/Not Found)");
-                // User requested no dialog, just silent update/completion.
-                // We could explicitly set to NOT_APPLIED if we wanted to enforce it, 
-                // but if it was already NOT_APPLIED, doing nothing is fine.
-                // The loader will stop in finally block.
+                setResults(prev => prev.map(r => r.panNumber === item.panNumber ? { ...r, status: res.status, units: res.units, message: res.message, name: res.name || r.name } : r));
             }
-        } catch (error) {
-            console.error("Single PAN Refresh Error:", error);
-            Alert.alert("Error", "Failed to refresh status. Please try again.");
-        } finally {
-            setRefreshingPans(prev => {
-                const next = new Set(prev);
-                next.delete(item.panNumber);
-                return next;
-            });
-        }
+        } catch (error) { Alert.alert("Error", "Failed to refresh status."); }
+        finally { setRefreshingPans(prev => { const next = new Set(prev); next.delete(item.panNumber); return next; }); }
     };
 
-    const onRefresh = React.useCallback(async () => {
-        await checkAllotment(true); // FORCE REFRESH
-    }, [ipo.registrarName]);
+    const onRefresh = React.useCallback(async () => { await checkAllotment(true, false); }, [ipo.registrarName]);
 
     const handleReportPress = (item: AllotmentResult) => {
         setActiveMenuPan(null);
-        navigation.navigate('ReportIssue', {
-            ipoName: ipoName,
-            userName: item.name,
-            panNumber: item.panNumber,
-            allotmentStatus: item.status
-        });
+        navigation.navigate('ReportIssue', { ipoName: ipoName, userName: item.name, panNumber: item.panNumber, allotmentStatus: item.status });
     };
 
     const handleShare = async (item: AllotmentResult) => {
         setActiveMenuPan(null);
         let message = '';
-        if (item.status === 'ALLOTTED') {
-            message = `🎉 Excited to share that I've been allotted shares in the ${ipoName} IPO! \n\nCheck your allotment status now on IPO Wizard app! 🚀`;
-        } else if (item.status === 'NOT_ALLOTTED') {
-            message = `Hard luck! No luck in ${ipoName} IPO allotment this time. \n\nBetter luck next time! Checking live status on IPO Wizard. 📊`;
-        } else {
-            message = `Checking ${ipoName} IPO allotment status on IPO Wizard app. \n\nStay updated with live GMP and subscriptions! 📈`;
-        }
-
-        try {
-            await Share.share({
-                message,
-                title: 'IPO Allotment Status'
-            });
-        } catch (error) {
-            console.error(error);
-        }
+        if (item.status === 'ALLOTTED') message = `🎉 Allotted in ${ipoName}! Check IPO Wizard!`;
+        else if (item.status === 'NOT_ALLOTTED') message = `No luck in ${ipoName}. Better luck next time!`;
+        else message = `Checking ${ipoName} status on IPO Wizard.`;
+        try { await Share.share({ message, title: 'IPO Allotment Status' }); } catch (error) { console.error(error); }
     };
 
     const [modalVisible, setModalVisible] = useState(false);
@@ -472,257 +270,83 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
     const handleAddPan = async (data: { panNumber: string, name?: string }) => {
         try {
-            // Check if PAN already exists in current results
-            if (results.some(r => r.panNumber === data.panNumber)) {
-                Alert.alert("Duplicate", "This PAN is already in the list.");
-                return;
-            }
+            if (results.some(r => r.panNumber === data.panNumber)) { Alert.alert("Duplicate", "PAN already exists."); return; }
+            let newResult: AllotmentResult = { panNumber: data.panNumber, name: data.name || 'New PAN', status: 'CHECKING', message: 'Checking...', source: isAuthenticated ? 'CLOUD' : 'LOCAL' };
 
-            let newResult: AllotmentResult = {
-                panNumber: data.panNumber,
-                name: data.name || 'New PAN',
-                status: 'CHECKING',
-                message: 'Checking status...',
-                source: isAuthenticated ? 'CLOUD' : 'LOCAL'
-            };
-
-            // 1. Save Persistent (Cloud/Local)
             if (isAuthenticated && user && token) {
                 await addUserPAN(token, { panNumber: data.panNumber, name: data.name || '' });
-                await refreshProfile(); // Sync global user state
+                await refreshProfile();
                 showToast({ message: "PAN saved to account", type: "success" });
             } else {
                 const stored = await AsyncStorage.getItem('unsaved_pans');
                 const currentPans = stored ? JSON.parse(stored) : [];
-                const newPanObj = { id: Date.now().toString(), panNumber: data.panNumber, name: data.name };
                 if (!currentPans.some((p: any) => p.panNumber === data.panNumber)) {
-                    await AsyncStorage.setItem('unsaved_pans', JSON.stringify([...currentPans, newPanObj]));
+                    await AsyncStorage.setItem('unsaved_pans', JSON.stringify([...currentPans, { id: Date.now().toString(), panNumber: data.panNumber, name: data.name }]));
                     showToast({ message: "PAN saved locally", type: "success" });
                 }
             }
 
-            // 2. Prepare Local List Logic
-            // We use a local variable to track the updated list so we can save it to cache at the end
             let updatedList = [newResult, ...results];
             setResults(updatedList);
             setAllPanCount(prev => prev + 1);
 
-            // 3. Trigger Status Check
             const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar || ipo.registrarLink);
-
             if (registrarKey) {
-                // Check single PAN
                 const response = await checkAllotmentStatus(ipoName, registrarKey, [data.panNumber], true);
-
                 if (response.success && response.data.length > 0) {
                     const res = response.data[0];
-                    updatedList = updatedList.map(item => {
-                        if (item.panNumber === data.panNumber) {
-                            return {
-                                ...item,
-                                status: res.status,
-                                units: res.units,
-                                message: res.message || '',
-                                name: res.name || item.name,
-                                dpId: res.dpId
-                            };
-                        }
-                        return item;
-                    });
+                    updatedList = updatedList.map(item => item.panNumber === data.panNumber ? { ...item, status: res.status, units: res.units, message: res.message, name: res.name || item.name } : item);
                 } else {
-                    updatedList = updatedList.map(item =>
-                        item.panNumber === data.panNumber ? { ...item, status: 'NOT_APPLIED', message: 'No record found' } : item
-                    );
+                    updatedList = updatedList.map(item => item.panNumber === data.panNumber ? { ...item, status: 'NOT_APPLIED', message: 'No record found' } : item);
                 }
             } else {
-                updatedList = updatedList.map(item =>
-                    item.panNumber === data.panNumber ? { ...item, status: 'UNKNOWN', message: 'Registrar not supported' } : item
-                );
+                updatedList = updatedList.map(item => item.panNumber === data.panNumber ? { ...item, status: 'UNKNOWN', message: 'Registrar not supported' } : item);
             }
-
-            // Final State Update
             setResults(updatedList);
-
-            // 4. UPDATE CACHE
-            const CACHE_KEY = `ALLOTMENT_CACHE_${ipoName}`;
-            await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(updatedList));
-
-        } catch (error) {
-            console.error("Add PAN Error:", error);
-            Alert.alert("Error", "Failed to save/check PAN.");
-        }
+            AsyncStorage.setItem(`ALLOTMENT_CACHE_${ipoName}`, JSON.stringify(updatedList));
+        } catch (error) { Alert.alert("Error", "Failed to save/check PAN."); }
     };
 
-
-    const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => {
-        return (
-            <AllotmentResultCard
-                item={item}
-                index={index}
-                fadeAnim={fadeAnim}
-                isMenuOpen={activeMenuPan === item.panNumber}
-                refreshing={refreshingPans.has(item.panNumber)}
-                onRefresh={handleRefreshPan}
-                onMenuToggle={() => setActiveMenuPan(activeMenuPan === item.panNumber ? null : item.panNumber)}
-                onShare={handleShare}
-                onReport={handleReportPress}
-            />
-        );
-    };
+    const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => (
+        <AllotmentResultCard
+            item={item} index={index} fadeAnim={fadeAnim} isMenuOpen={activeMenuPan === item.panNumber}
+            refreshing={refreshingPans.has(item.panNumber)} onRefresh={handleRefreshPan}
+            onMenuToggle={() => setActiveMenuPan(activeMenuPan === item.panNumber ? null : item.panNumber)}
+            onShare={handleShare} onReport={handleReportPress}
+        />
+    );
 
     const allottedCount = results.filter(r => r.status === 'ALLOTTED').length;
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-                    <ArrowLeft color={colors.text} size={24} />
-                </TouchableOpacity>
-                <Text style={[styles.headerTitle, { color: colors.text }]}>Allotment Status</Text>
-
-                <TouchableOpacity
-                    onPress={() => setModalVisible(true)}
-                    style={{ padding: 4, backgroundColor: colors.primary + '20', borderRadius: 8 }}
-                >
-                    <Plus size={20} color={colors.primary} />
-                </TouchableOpacity>
-            </View>
+            <AllotmentHeader onAddPress={() => setModalVisible(true)} />
 
             <View style={styles.content}>
                 {loading && results.length === 0 ? (
                     <AllotmentSkeleton />
                 ) : results.length > 0 ? (
                     <View style={{ flex: 1 }}>
-
-                        {/* Simple Summary */}
-                        {allottedCount > 0 && (
-                            <View style={[styles.simpleBanner, { backgroundColor: colors.primary + '15', marginBottom: 16 }]}>
-                                <Text style={{ color: colors.primary, fontWeight: 'bold' }}>🎉 {allottedCount} Applications Allotted!</Text>
-                            </View>
-                        )}
-
-                        <View style={{ paddingHorizontal: 16, marginTop: allottedCount > 0 ? 0 : 16 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
-                                <View style={[styles.ipoIconContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                    {ipoLogo ? (
-                                        <Image source={{ uri: ipoLogo }} style={styles.ipoIcon} resizeMode="contain" />
-                                    ) : (
-                                        <Trophy size={20} color={colors.primary} />
-                                    )}
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 12 }}>
-                                    <Text style={[styles.companyTitle, { color: colors.text, marginBottom: 0 }]}>{ipoName}</Text>
-                                    <Text style={{ fontSize: 13, color: colors.text, opacity: 0.6 }}>
-                                        {ipo?.symbol} • {ipo?.type}
-                                    </Text>
-                                </View>
-                            </View>
-
-                            <View style={[styles.searchBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                                <Search size={18} color={colors.text} style={{ opacity: 0.5, marginRight: 8 }} />
-                                <TextInput
-                                    style={{ flex: 1, color: colors.text, fontSize: 14, paddingVertical: 4 }}
-                                    placeholder="Search by name or PAN..."
-                                    placeholderTextColor={colors.text + '80'}
-                                    value={searchQuery}
-                                    onChangeText={setSearchQuery}
-                                />
-                            </View>
-
-                            {/* Filter Chips */}
-                            <View style={{ flexDirection: 'row', gap: 8, marginTop: 12, marginBottom: 4 }}>
-                                {(['ALL', 'CLOUD', 'LOCAL'] as const).map((type) => {
-                                    const isActive = filterSource === type;
-                                    let label = 'All';
-                                    let IconComponent = null;
-
-                                    if (type === 'CLOUD') {
-                                        label = 'Saved';
-                                        IconComponent = Cloud;
-                                    } else if (type === 'LOCAL') {
-                                        label = 'Unsaved';
-                                        IconComponent = Smartphone;
-                                    }
-
-                                    return (
-                                        <TouchableOpacity
-                                            key={type}
-                                            onPress={() => setFilterSource(type)}
-                                            style={{
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                paddingVertical: 6,
-                                                paddingHorizontal: 16,
-                                                borderRadius: 20,
-                                                backgroundColor: isActive ? colors.primary : colors.card,
-                                                borderWidth: 1,
-                                                borderColor: isActive ? colors.primary : colors.border,
-                                                gap: 6
-                                            }}
-                                        >
-                                            {IconComponent && (
-                                                <IconComponent
-                                                    size={14}
-                                                    color={isActive ? '#FFF' : colors.text}
-                                                    style={{ opacity: isActive ? 1 : 0.6 }}
-                                                />
-                                            )}
-                                            <Text style={{
-                                                fontSize: 13,
-                                                fontWeight: isActive ? '600' : '500',
-                                                color: isActive ? '#FFF' : colors.text,
-                                                opacity: isActive ? 1 : 0.7
-                                            }}>
-                                                {label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-
-
-                        </View>
-
-
-
-
-                        <AllotmentStats results={filteredResults} />
-
-
-                        <FlatList
-                            data={filteredResults}
-                            keyExtractor={item => item.panNumber}
-                            renderItem={renderResultCard}
-                            contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 40 }}
-                            onScrollBeginDrag={() => {
-                                if (activeMenuPan) setActiveMenuPan(null);
-                            }}
-                            refreshControl={
-                                <RefreshControl refreshing={loading} onRefresh={onRefresh} colors={[colors.primary]} />
-                            }
-                            ListEmptyComponent={
-                                <Text style={{ textAlign: 'center', marginTop: 32, color: colors.text, opacity: 0.6 }}>No results.</Text>
-                            }
-                            ListFooterComponent={
-                                <Text style={{ textAlign: 'center', fontSize: 12, color: colors.text, opacity: 0.4, marginTop: 24, marginBottom: 16 }}>
-                                    Pull down to refresh and see updated results
-                                </Text>
-                            }
+                        <AllotmentFilterHeader
+                            ipo={ipo} searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+                            filterSource={filterSource} setFilterSource={setFilterSource} allottedCount={allottedCount}
                         />
-
+                        <AllotmentStats results={filteredResults} />
+                        <FlatList
+                            data={filteredResults} keyExtractor={item => item.panNumber} renderItem={renderResultCard}
+                            contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 40 }}
+                            onScrollBeginDrag={() => { if (activeMenuPan) setActiveMenuPan(null); }}
+                            refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} colors={[colors.primary]} />}
+                            ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 32, color: colors.text, opacity: 0.6 }}>No results.</Text>}
+                            ListFooterComponent={<Text style={{ textAlign: 'center', fontSize: 12, color: colors.text, opacity: 0.4, marginTop: 24, marginBottom: 16 }}>Pull down to refresh and see updated results</Text>}
+                        />
                     </View>
                 ) : hasError ? (
                     <View style={styles.centerContainer}>
                         <XCircle size={48} color={colors.notification} />
                         <Text style={[styles.loadingText, { color: colors.text }]}>Unable to check status</Text>
-                        <Text style={{ color: colors.text, opacity: 0.6, marginTop: 4, textAlign: 'center', paddingHorizontal: 32 }}>
-                            We couldn't connect to the server or the registrar is unavailable.
-                        </Text>
-                        <TouchableOpacity
-                            style={{ marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }}
-                            onPress={checkAllotment}
-                        >
+                        <Text style={{ color: colors.text, opacity: 0.6, marginTop: 4, textAlign: 'center', paddingHorizontal: 32 }}>We couldn't connect to the server or the registrar is unavailable.</Text>
+                        <TouchableOpacity style={{ marginTop: 16, backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 }} onPress={() => checkAllotment()}>
                             <Text style={{ color: '#FFF', fontWeight: 'bold' }}>Retry</Text>
                         </TouchableOpacity>
                     </View>
@@ -736,49 +360,14 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 )}
             </View>
 
-            <AddPANModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onSubmit={handleAddPan}
-                requireName={true}
-                title="Add New PAN"
-            />
+            <AddPANModal visible={modalVisible} onClose={() => setModalVisible(false)} onSubmit={handleAddPan} requireName={true} title="Add New PAN" />
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    header: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1,
-    },
-    closeBtn: { padding: 4 },
-    headerTitle: { fontSize: 22, fontWeight: 'bold' },
     content: { flex: 1 },
     centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: 12, fontSize: 14, fontWeight: '600' },
-
-    simpleBanner: {
-        padding: 8, alignItems: 'center', justifyContent: 'center'
-    },
-    companyTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 8 },
-    searchBar: {
-        flexDirection: 'row', alignItems: 'center',
-        paddingHorizontal: 10, paddingVertical: 8,
-        borderRadius: 8, borderWidth: 1,
-    },
-    ipoIconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 8,
-        borderWidth: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        overflow: 'hidden'
-    },
-    ipoIcon: {
-        width: '100%',
-        height: '100%'
-    }
 });

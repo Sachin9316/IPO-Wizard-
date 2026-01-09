@@ -6,7 +6,7 @@ import { Search } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 
-export const CustomHeader = ({ title, showActions = true, showSearch = true }: { title: string; showActions?: boolean; showSearch?: boolean }) => {
+export const CustomHeader = ({ title, showActions = true, showSearch = true, showFilter = true }: { title: string; showActions?: boolean; showSearch?: boolean; showFilter?: boolean }) => {
     const { colors } = useTheme();
     const { headerFilter, setHeaderFilter } = useUI();
     const navigation = useNavigation<any>();
@@ -19,44 +19,46 @@ export const CustomHeader = ({ title, showActions = true, showSearch = true }: {
                 {showActions && (
                     <View style={styles.rightContainer}>
                         {/* Filter Toggle */}
-                        <View style={[styles.toggleContainer, { borderColor: colors.border }]}>
-                            <TouchableOpacity
-                                style={[
-                                    styles.toggleBtn,
-                                    headerFilter === 'ALL' && { backgroundColor: colors.primary }
-                                ]}
-                                onPress={() => setHeaderFilter('ALL')}
-                            >
-                                <Text style={[
-                                    styles.toggleText,
-                                    { color: headerFilter === 'ALL' ? '#FFF' : colors.text }
-                                ]}>All</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[
-                                    styles.toggleBtn,
-                                    headerFilter === 'MAINBOARD' && { backgroundColor: colors.primary }
-                                ]}
-                                onPress={() => setHeaderFilter('MAINBOARD')}
-                            >
-                                <Text style={[
-                                    styles.toggleText,
-                                    { color: headerFilter === 'MAINBOARD' ? '#FFF' : colors.text }
-                                ]}>Mainboard</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[
-                                    styles.toggleBtn,
-                                    headerFilter === 'SME' && { backgroundColor: colors.primary }
-                                ]}
-                                onPress={() => setHeaderFilter('SME')}
-                            >
-                                <Text style={[
-                                    styles.toggleText,
-                                    { color: headerFilter === 'SME' ? '#FFF' : colors.text }
-                                ]}>SME</Text>
-                            </TouchableOpacity>
-                        </View>
+                        {showFilter && (
+                            <View style={[styles.toggleContainer, { borderColor: colors.border }]}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.toggleBtn,
+                                        headerFilter === 'ALL' && { backgroundColor: colors.primary }
+                                    ]}
+                                    onPress={() => setHeaderFilter('ALL')}
+                                >
+                                    <Text style={[
+                                        styles.toggleText,
+                                        { color: headerFilter === 'ALL' ? '#FFF' : colors.text }
+                                    ]}>All</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.toggleBtn,
+                                        headerFilter === 'MAINBOARD' && { backgroundColor: colors.primary }
+                                    ]}
+                                    onPress={() => setHeaderFilter('MAINBOARD')}
+                                >
+                                    <Text style={[
+                                        styles.toggleText,
+                                        { color: headerFilter === 'MAINBOARD' ? '#FFF' : colors.text }
+                                    ]}>Mainboard</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.toggleBtn,
+                                        headerFilter === 'SME' && { backgroundColor: colors.primary }
+                                    ]}
+                                    onPress={() => setHeaderFilter('SME')}
+                                >
+                                    <Text style={[
+                                        styles.toggleText,
+                                        { color: headerFilter === 'SME' ? '#FFF' : colors.text }
+                                    ]}>SME</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
 
                         {showSearch && (
                             <TouchableOpacity onPress={() => navigation.navigate('Search')} style={styles.iconButton}>

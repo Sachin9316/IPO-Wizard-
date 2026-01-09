@@ -79,6 +79,16 @@ export const fetchSMEIPOs = async (page = 1, limit = 10, status?: string, search
     }
 };
 
+export const fetchSMEIPOById = async (id: string) => {
+    try {
+        const data = await fetchWithCache(`${BASE_URL}/sme/sme-ipo/${id}`);
+        return data.data || data;
+    } catch (error) {
+        console.error('Error fetching SME IPO by ID:', error);
+        return null;
+    }
+};
+
 export const fetchListedIPOs = async (page = 1, limit = 10) => {
     try {
         const data = await fetchWithCache(`${BASE_URL}/listed/listed-ipos?page=${page}&limit=${limit}`);

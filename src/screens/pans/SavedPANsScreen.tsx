@@ -10,6 +10,7 @@ import { addUserPAN, deleteUserPAN, updateUserPAN } from '../../services/api'; /
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useUI } from '../../context/UIContext';
 import { usePreferences } from '../../context/PreferencesContext';
+import { SkeletonPANCard } from '../../components/SkeletonPANCard';
 
 interface PANData {
     id: string; // For local: timestamp. For cloud: _id or panNumber? API uses panNumber for delete.
@@ -27,19 +28,31 @@ export const SavedPANsScreen = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [editingPAN, setEditingPAN] = useState<PANData | null>(null);
     const [localPans, setLocalPans] = useState<PANData[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [refreshing, setRefreshing] = useState(false); // Add refreshing state
+    const [isLoading, setIsLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
-        loadLocalPans();
+        const init = async () => {
+            setIsLoading(true);
+            await loadLocalPans();
+            if (isAuthenticated && refreshProfile) {
+                try {
+                    await refreshProfile();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            setIsLoading(false);
+        };
+        init();
         // Reload local pans whenever auth changes to ensure we have fresh state
     }, [isAuthenticated]);
 
-    // Add useFocusEffect to refresh profile when navigating to this tab
+    // Refresh profile silently when navigating to this tab
     useFocusEffect(
         useCallback(() => {
             if (isAuthenticated && refreshProfile) {
-                refreshProfile();
+                refreshProfile().catch(err => console.error("Silent refresh failed", err));
             }
         }, [isAuthenticated])
     );
@@ -249,13 +262,19 @@ export const SavedPANsScreen = () => {
                 )}
             </View>
 
-            {isLoading && <ActivityIndicator size="small" color={colors.primary} style={{ margin: 10 }} />}
+            {isLoading && !refreshing ? (
+                <View style={{ padding: 16 }}>
+                    {
+                        Array.from({ length: 6 }).map((_, index) => <SkeletonPANCard key={index} />)
+                    }
+                </View>
+            ) : null}
 
             <FlatList
                 data={[]}
                 contentContainerStyle={{ flexGrow: 1 }}
                 ListHeaderComponent={
-                    <View style={{ padding: 16, flex: 1, justifyContent: (isAuthenticated && (cloudPans.length > 0 || unsavedPans.length > 0)) || (!isAuthenticated && unsavedPans.length > 0) ? 'flex-start' : 'center' }}>
+                    <View style={{ padding: 10, flex: 1, justifyContent: (isAuthenticated && (cloudPans.length > 0 || unsavedPans.length > 0)) || (!isAuthenticated && unsavedPans.length > 0) ? 'flex-start' : 'center' }}>
                         {isAuthenticated && cloudPans.length > 0 && (
                             <View style={{ marginBottom: 20 }}>
                                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Synced PANs ({cloudPans.length})</Text>
