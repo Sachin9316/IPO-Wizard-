@@ -55,15 +55,17 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
             >
                 {/* ... rest of the card content ... */}
                 <View style={styles.header}>
-                    <View style={[styles.logoContainer, { width: 44, height: 44 }]}>
-                        <View style={[styles.logoplaceholder, { backgroundColor: colors.border, position: 'absolute', width: '100%', height: '100%' }]}>
-                            <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>LOGO</Text>
-                        </View>
+                    <View style={[styles.logoContainer, { width: 50, height: 45 }]}>
+                        {(!item.logoUrl || imageError) && (
+                            <View style={[styles.logoplaceholder, { backgroundColor: colors.border, position: 'absolute', width: '100%', height: '100%' }]}>
+                                <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>LOGO</Text>
+                            </View>
+                        )}
                         {item.logoUrl && !imageError && (
                             <Image
                                 source={{ uri: item.logoUrl }}
-                                style={{ width: '100%', height: '100%', borderRadius: 8 }}
-                                resizeMode="cover"
+                                style={{ width: '100%', height: '100%' }}
+                                resizeMode="contain"
                                 onError={() => setImageError(true)}
                             />
                         )}
@@ -211,9 +213,8 @@ const styles = StyleSheet.create({
         marginRight: 10,
     },
     logoplaceholder: {
-        width: 44,
-        height: 44,
-        borderRadius: 8,
+        width: 50,
+        height: 45,
         justifyContent: 'center',
         alignItems: 'center',
     },
