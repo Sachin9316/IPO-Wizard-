@@ -172,6 +172,17 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                     ]}
                     disabled={false}
                     onPress={async () => {
+                        const hasRegistrar = (item.registrarName && item.registrarName !== "N/A") || (item.registrarLink && item.registrarLink !== "");
+
+                        if (!hasRegistrar) {
+                            showAlert({
+                                title: "Registrar Not Assigned",
+                                message: "The registrar for this IPO has not been assigned yet. Please check back later.",
+                                type: 'info'
+                            });
+                            return;
+                        }
+
                         if (!item.isAllotmentOut) {
                             showAlert({
                                 title: "Allotment Not Out",
@@ -207,8 +218,8 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                         }
                     }}
                 >
-                    <CheckCircle color={item.isAllotmentOut ? "#FFF" : "#888"} size={20} />
-                    <Text style={[styles.fabText, { color: item.isAllotmentOut ? "#FFF" : "#888" }]}>Check Allotment</Text>
+                    <CheckCircle color={(item.isAllotmentOut && ((item.registrarName && item.registrarName !== "N/A") || (item.registrarLink && item.registrarLink !== ""))) ? "#FFF" : "#888"} size={20} />
+                    <Text style={[styles.fabText, { color: (item.isAllotmentOut && ((item.registrarName && item.registrarName !== "N/A") || (item.registrarLink && item.registrarLink !== ""))) ? "#FFF" : "#888" }]}>Check Allotment</Text>
                 </TouchableOpacity>
             )}
 

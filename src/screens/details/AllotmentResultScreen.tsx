@@ -191,8 +191,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 toValue: 1, duration: 500, useNativeDriver: false, easing: Easing.out(Easing.ease)
             }).start();
 
-            // 4. API Check Loop (Skip if requested or no registrar)
-            if (skipApiCheck || !registrarKey) {
+            // 4. API Check Loop (Skip if requested)
+            // Fix: Do NOT skip if registrarKey is null. Pass the raw name to backend.
+            if (skipApiCheck) {
                 // If skipping, ensuring we save the merged state to cache so we don't lose the "WAITING" entries or updates
                 AsyncStorage.setItem(CACHE_KEY, JSON.stringify(mergedResults));
                 return;
@@ -217,7 +218,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 setResults(prev => prev.map(item => item.panNumber === p.panNumber ? { ...item, status: 'CHECKING', message: 'Checking...' } : item));
 
                 try {
-                    const response = await checkAllotmentStatus(ipoName, registrarKey, [p.panNumber], shouldForce);
+                    // Pass registrarKey if found, otherwise pass rawRegistrarName
+                    const registrarToSend = registrarKey || rawRegistrarName;
+                    const response = await checkAllotmentStatus(ipoName, registrarToSend, [p.panNumber], shouldForce);
                     const updateFunction = (item: AllotmentResult) => {
                         if (item.panNumber === p.panNumber) {
                             if (response.success && response.data.length > 0) {
@@ -227,7 +230,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                 if (finalMessage.includes('browserType.launch') || finalMessage.includes('playwright')) {
                                     finalStatus = 'NOT_APPLIED'; finalMessage = 'No record found';
                                 }
-                                return { ...item, status: finalStatus, units: res.units || 0, message: finalMessage, name: res.name || item.name, dpId: res.dpId };
+                                return { ...item, status: finalStatus, units: res.units || 0, message: finalMessage, name: item.name, dpId: res.dpId };
                             } else {
                                 return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
                             }
@@ -265,15 +268,17 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
     const handleRefreshPan = async (item: AllotmentResult) => {
         if (refreshingPans.has(item.panNumber)) return;
-        const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar || ipo.registrarLink);
-        if (!registrarKey) { Alert.alert("Unsupported Registrar", "Manual check required."); return; }
+        const rawRegistrarName = ipo.registrarName || ipo.registrar || ipo.registrarLink;
+        const registrarKey = getRegistrarKey(rawRegistrarName);
+        // if (!registrarKey) { Alert.alert("Unsupported Registrar", "Manual check required."); return; }
 
         setRefreshingPans(prev => new Set(prev).add(item.panNumber));
         try {
-            const response = await checkAllotmentStatus(ipoName, registrarKey, [item.panNumber], true);
+            const registrarToSend = registrarKey || rawRegistrarName;
+            const response = await checkAllotmentStatus(ipoName, registrarToSend, [item.panNumber], true);
             if (response.success && response.data.length > 0) {
                 const res = response.data[0];
-                setResults(prev => prev.map(r => r.panNumber === item.panNumber ? { ...r, status: res.status, units: res.units, message: res.message, name: res.name || r.name } : r));
+                setResults(prev => prev.map(r => r.panNumber === item.panNumber ? { ...r, status: res.status, units: res.units, message: res.message, name: r.name } : r));
             }
         } catch (error) { Alert.alert("Error", "Failed to refresh status."); }
         finally { setRefreshingPans(prev => { const next = new Set(prev); next.delete(item.panNumber); return next; }); }
@@ -321,8 +326,12 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             setAllPanCount(prev => prev + 1);
 
             const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar || ipo.registrarLink);
-            if (registrarKey) {
-                const response = await checkAllotmentStatus(ipoName, registrarKey, [data.panNumber], true);
+            const rawRegistrarName = ipo.registrarName || ipo.registrar || ipo.registrarLink;
+
+            // Allow checking if we have a name, even if key is null
+            if (rawRegistrarName) {
+                const registrarToSend = registrarKey || rawRegistrarName;
+                const response = await checkAllotmentStatus(ipoName, registrarToSend, [data.panNumber], true);
                 if (response.success && response.data.length > 0) {
                     const res = response.data[0];
                     updatedList = updatedList.map(item => item.panNumber === data.panNumber ? { ...item, status: res.status, units: res.units, message: res.message, name: res.name || item.name } : item);

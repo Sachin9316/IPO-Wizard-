@@ -53,9 +53,6 @@ export const TopTabNavigator = () => {
                 initialParams={{ type: 'ClosedListed' }}
                 options={{ title: 'Closed' }}
             />
-
-
-
             <Tab.Screen
                 name="Watchlist"
                 component={IPOListScreen}
