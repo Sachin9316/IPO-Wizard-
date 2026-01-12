@@ -105,18 +105,21 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
                                     <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'flex-end' }}>
                                         {(() => {
                                             const gmpStr = item.gmp || '';
+                                            const isNegative = gmpStr.includes('-');
+                                            const color = isNegative ? '#F44336' : '#4CAF50';
+
                                             // Try to match "Amount (Percentage)"
                                             const match = gmpStr.match(/^(.+?)\s*(\(.*\))$/);
                                             if (match) {
                                                 return (
                                                     <>
-                                                        <Text style={[styles.gmpValue, { color: '#4CAF50', marginRight: 4 }]}>{match[1]}</Text>
-                                                        <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{match[2]}</Text>
+                                                        <Text style={[styles.gmpValue, { color, marginRight: 4 }]}>{match[1]}</Text>
+                                                        <Text style={[styles.gmpValue, { color }]}>{match[2]}</Text>
                                                     </>
                                                 );
                                             }
                                             // Fallback if format is different
-                                            return <Text style={[styles.gmpValue, { color: '#4CAF50' }]}>{gmpStr}</Text>;
+                                            return <Text style={[styles.gmpValue, { color }]}>{gmpStr}</Text>;
                                         })()}
                                     </View>
                                 </View>

@@ -1,17 +1,17 @@
-import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
 
 interface IPOHeroProps {
     item: IPOData;
+    style?: StyleProp<ViewStyle>;
 }
 
-export const IPOHero = ({ item }: IPOHeroProps) => {
+export const IPOHero = ({ item, style }: IPOHeroProps) => {
     const { colors } = useTheme();
 
     return (
-        <View style={styles.compactHeader}>
+        <View style={[styles.compactHeader, style]}>
             <View style={[styles.heroContainer, { backgroundColor: colors.card }]}>
                 <View style={[styles.logoContainerLarge, { backgroundColor: colors.background }]}>
                     {item.logoUrl ? (

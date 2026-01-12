@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { ArrowLeft, TrendingUp, Calendar } from 'lucide-react-native';
 import { LineChart } from 'react-native-chart-kit';
+import { IPOHero } from '../../components/details/IPOHero';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -69,12 +70,8 @@ export const GMPScreen = ({ route, navigation }: any) => {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                <View style={{ marginBottom: 24 }}>
-                    <Text style={[styles.companyName, { color: colors.text }]}>{name}</Text>
-                    <Text style={[styles.subtitle, { color: colors.text }]}>
-                        {ipo?.symbol} • {ipo?.type}
-                    </Text>
-                </View>
+                {/* Hero Card */}
+                <IPOHero item={ipo} style={{ paddingHorizontal: 0, paddingVertical: 0, marginBottom: 12 }} />
 
                 {/* Chart Section */}
                 {prices.length > 1 && (

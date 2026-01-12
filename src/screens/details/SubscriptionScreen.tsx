@@ -6,6 +6,7 @@ import { ArrowLeft, Users, Briefcase, UserCheck } from 'lucide-react-native';
 import { SubscriptionCard } from '../../components/subscription/SubscriptionCard';
 import { SubscriptionHero } from '../../components/subscription/SubscriptionHero';
 import { SubscriptionPieChart } from '../../components/subscription/SubscriptionPieChart';
+import { IPOHero } from '../../components/details/IPOHero';
 
 export const SubscriptionScreen = ({ route, navigation }: any) => {
     const { colors } = useTheme();
@@ -44,12 +45,8 @@ export const SubscriptionScreen = ({ route, navigation }: any) => {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                <View style={{ marginBottom: 24 }}>
-                    <Text style={[styles.companyName, { color: colors.text }]}>{name}</Text>
-                    <Text style={[styles.subtitle, { color: colors.text }]}>
-                        {ipo?.symbol} • {ipo?.type}
-                    </Text>
-                </View>
+                {/* Hero Card for Total */}
+                <IPOHero item={ipo} style={{ paddingHorizontal: 0, paddingVertical: 0, marginBottom: 12 }} />
 
                 {/* Hero Card for Total */}
                 <SubscriptionHero total={total} />
@@ -82,29 +79,31 @@ export const SubscriptionScreen = ({ route, navigation }: any) => {
                         </View>
                     </View>
 
-                    <View style={styles.row}>
-                        <View style={{ flex: 1 }}>
-                            <SubscriptionCard
-                                label="sNII"
-                                value={subscriptionDetails.snii || 0}
-                                maxVal={maxVal}
-                                icon={<Users size={20} color="#FF9800" />}
-                                color="#FF9800"
-                                description="Small NII (2-10L)"
-                            />
+                    {ipo?.type !== 'SME' && (
+                        <View style={styles.row}>
+                            <View style={{ flex: 1 }}>
+                                <SubscriptionCard
+                                    label="sNII"
+                                    value={subscriptionDetails.snii || 0}
+                                    maxVal={maxVal}
+                                    icon={<Users size={20} color="#FF9800" />}
+                                    color="#FF9800"
+                                    description="Small NII (2-10L)"
+                                />
+                            </View>
+                            <View style={{ width: 16 }} />
+                            <View style={{ flex: 1 }}>
+                                <SubscriptionCard
+                                    label="bNII"
+                                    value={subscriptionDetails.bnii || 0}
+                                    maxVal={maxVal}
+                                    icon={<Users size={20} color="#FF5722" />}
+                                    color="#FF5722"
+                                    description="Big NII (>10L)"
+                                />
+                            </View>
                         </View>
-                        <View style={{ width: 16 }} />
-                        <View style={{ flex: 1 }}>
-                            <SubscriptionCard
-                                label="bNII"
-                                value={subscriptionDetails.bnii || 0}
-                                maxVal={maxVal}
-                                icon={<Users size={20} color="#FF5722" />}
-                                color="#FF5722"
-                                description="Big NII (>10L)"
-                            />
-                        </View>
-                    </View>
+                    )}
 
                     <View style={styles.row}>
                         <View style={{ flex: 1 }}>
