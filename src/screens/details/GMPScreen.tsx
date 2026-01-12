@@ -73,6 +73,29 @@ export const GMPScreen = ({ route, navigation }: any) => {
                 {/* Hero Card */}
                 <IPOHero item={ipo} style={{ paddingHorizontal: 0, paddingVertical: 0, marginBottom: 12 }} />
 
+                {/* Profit Summary Card */}
+                {(() => {
+                    const latestGMP = gmpDetails.length > 0 ? gmpDetails[gmpDetails.length - 1].price : 0;
+                    // Parse Lot Size
+                    const lotSizeStr = ipo.lotSize ? ipo.lotSize.toString() : '0';
+                    const lotSizeMatch = lotSizeStr.match(/(\d+(\.\d+)?)/);
+                    const lotSize = lotSizeMatch ? parseFloat(lotSizeMatch[0]) : 0;
+
+                    const estProfit = latestGMP * lotSize;
+
+                    return (
+                        <View style={[styles.profitCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                            <View>
+                                <Text style={[styles.profitLabel, { color: colors.text }]}>Est. Listing Profit</Text>
+                                <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>per lot ({lotSize} shares)</Text>
+                            </View>
+                            <Text style={[styles.profitValue, { color: estProfit >= 0 ? '#4CAF50' : '#F44336' }]}>
+                                ₹{estProfit.toLocaleString('en-IN')}
+                            </Text>
+                        </View>
+                    );
+                })()}
+
                 {/* Chart Section */}
                 {prices.length > 1 && (
                     <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -128,26 +151,104 @@ export const GMPScreen = ({ route, navigation }: any) => {
 
                 {/* List Section */}
                 <View style={styles.listContainer}>
-                    <Text style={[styles.sectionTitle, { color: colors.text }]}>Daily Updates</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Daily Updates</Text>
+                        <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>
+                            Last updated {gmpDetails.length > 0 ? (() => {
+                                const dateStr = gmpDetails[gmpDetails.length - 1].date;
+                                // Try to parse and format nicely
+                                try {
+                                    const date = new Date(dateStr.match(/\d{4}/) ? dateStr : `${dateStr} ${new Date().getFullYear()}`);
+                                    return !isNaN(date.getTime())
+                                        ? date.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                        : dateStr;
+                                } catch (e) { return dateStr; }
+                            })() : '-'}
+                        </Text>
+                    </View>
                     {/* Header Row */}
                     <View style={[styles.row, styles.tableHeader, { borderBottomColor: colors.border }]}>
-                        <Text style={[styles.col, styles.headerText, { color: colors.text }]}>Date</Text>
-                        <Text style={[styles.col, styles.headerText, { color: colors.text }]}>GMP (₹)</Text>
-                        <Text style={[styles.col, styles.headerText, { color: colors.text }]}>Kostak</Text>
+                        <Text style={[styles.col, styles.headerText, { color: colors.text, flex: 1.3 }]}>Date</Text>
+                        <Text style={[styles.col, styles.headerText, { color: colors.text, flex: 0.9, textAlign: 'right' }]}>GMP (₹)</Text>
+                        <Text style={[styles.col, styles.headerText, { color: colors.text, flex: 0.9, textAlign: 'right' }]}>Change</Text>
+                        <Text style={[styles.col, styles.headerText, { color: colors.text, flex: 1.1, textAlign: 'right' }]}>GMP %</Text>
                     </View>
 
-                    {[...gmpDetails].reverse().map((item: any, index: number) => (
-                        <View key={index} style={[styles.row, { borderBottomColor: colors.border }]}>
-                            <View style={styles.dateCol}>
-                                <Calendar size={14} color={colors.text} style={{ opacity: 0.6, marginRight: 6 }} />
-                                <Text style={[styles.cellText, { color: colors.text }]}>{item.date}</Text>
+                    {[...gmpDetails].reverse().map((item: any, index: number) => {
+                        const originalIndex = gmpDetails.length - 1 - index;
+                        const previousItem = originalIndex > 0 ? gmpDetails[originalIndex - 1] : null;
+
+                        let change = 0;
+                        let changeIcon = null;
+
+                        if (previousItem) {
+                            change = item.price - previousItem.price;
+                        }
+
+                        if (change > 0) {
+                            changeIcon = <TrendingUp size={12} color="#4CAF50" />;
+                        } else if (change < 0) {
+                            // TrendingDown icon not imported, rotate Up or use color
+                            changeIcon = <TrendingUp size={12} color="#F44336" style={{ transform: [{ rotate: '180deg' }] }} />;
+                        }
+
+                        let issuePrice = ipo.max_price || ipo.maxPrice || ipo.min_price || ipo.minPrice || 0;
+
+                        // Fallback: Extract from priceRange if not found
+                        if (!issuePrice && ipo.priceRange) {
+                            try {
+                                const prices = ipo.priceRange.match(/(\d+(\.\d+)?)/g)?.map(Number) || [];
+                                if (prices.length > 0) {
+                                    issuePrice = Math.max(...prices);
+                                }
+                            } catch (e) {
+                                // Ignore parsing error
+                            }
+                        }
+
+                        // Use toFixed(2) and ensure string type for render
+                        const gmpPercent = issuePrice > 0 ? ((item.price / issuePrice) * 100).toFixed(2) : '0.00';
+
+                        // Format date to "12 Jan 2026"
+                        const parseDate = (dateStr: string) => {
+                            if (!dateStr) return new Date();
+                            // Check if year is present (4 digits)
+                            if (/\d{4}/.test(dateStr)) {
+                                return new Date(dateStr);
+                            }
+                            // If not, append current year
+                            const currentYear = new Date().getFullYear();
+                            return new Date(`${dateStr} ${currentYear}`);
+                        };
+
+                        const dateObj = parseDate(item.date);
+                        const formattedDate = !isNaN(dateObj.getTime())
+                            ? dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                            : item.date;
+
+                        return (
+                            <View key={index} style={[styles.row, { borderBottomColor: colors.border }]}>
+                                <View style={[styles.dateCol, { flex: 1.3 }]}>
+                                    <Text style={[styles.cellText, { color: colors.text, fontSize: 12 }]}>{formattedDate}</Text>
+                                </View>
+
+                                <Text style={[styles.col, styles.priceText, { color: item.price >= 0 ? '#4CAF50' : '#F44336', flex: 0.9, textAlign: 'right' }]}>
+                                    ₹{item.price}
+                                </Text>
+
+                                <View style={[styles.col, { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', flex: 0.9, gap: 4 }]}>
+                                    {change !== 0 && changeIcon}
+                                    <Text style={[styles.cellText, { color: change > 0 ? '#4CAF50' : (change < 0 ? '#F44336' : colors.text), fontWeight: '500', fontSize: 13 }]}>
+                                        {change !== 0 ? `₹${Math.abs(change).toFixed(1).replace(/\.0$/, '')}` : '-'}
+                                    </Text>
+                                </View>
+
+                                <Text style={[styles.col, styles.cellText, { color: colors.text, flex: 1.1, textAlign: 'right' }]}>
+                                    {gmpPercent}%
+                                </Text>
                             </View>
-                            <Text style={[styles.col, styles.priceText, { color: item.price >= 0 ? '#4CAF50' : '#F44336' }]}>
-                                ₹{item.price}
-                            </Text>
-                            <Text style={[styles.col, styles.cellText, { color: colors.text }]}>{item.kostak}</Text>
-                        </View>
-                    ))}
+                        );
+                    })}
                 </View>
 
                 <View style={[styles.disclaimerContainer, { borderTopColor: colors.border }]}>
@@ -256,5 +357,23 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontStyle: 'italic',
         textAlign: 'center',
+    },
+    profitCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        marginBottom: 24,
+    },
+    profitLabel: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    profitValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
     },
 });

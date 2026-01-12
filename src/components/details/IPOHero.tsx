@@ -52,16 +52,16 @@ const styles = StyleSheet.create({
     logoContainerLarge: {
         width: 56,
         height: 56,
-        borderRadius: 14,
+        // borderRadius: 14, // Removed as per user request
         marginRight: 16,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: 'transparent',
     },
     logoLarge: {
         width: '100%',
         height: '100%',
-        borderRadius: 14,
+        // borderRadius: 14, // Removed as per user request
     },
     companyNameLarge: {
         fontSize: 18,

@@ -95,7 +95,7 @@ export const mapBackendToFrontend = (backendData: any): IPOData => {
         } : undefined,
         gmpDetails: backendData.gmp ? backendData.gmp.map((g: any) => ({
             price: g.price || 0,
-            date: moment(g.date).format('DD MMM'),
+            date: g.date, // Keep raw ISO string for frontend parsing
             kostak: g.kostak || '-'
         })) : [],
         maxPrice: backendData.max_price || backendData.lot_price || 0
