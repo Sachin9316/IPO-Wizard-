@@ -188,6 +188,30 @@ export const updateUserPAN = async (token: string, panNumber: string, data: { na
     return response.json();
 };
 
+export const updateUser = async (token: string, data: any) => {
+    // Check if data contains emailPreferences, if so stringify it because backend expects it logic from multipart handling?
+    // Actually backend controller says: if (typeof req.body.emailPreferences === 'string') JSON.parse...
+    // But body-parser handles JSON too. The multipart/form-data logic in controller was for when image file is present.
+    // If we send JSON, it should be fine as object or string. Let's send as object, if backend fails we switch.
+    // Wait, controller line 247: if (typeof req.body.emailPreferences === 'string').
+    // So object works fine too.
+
+    const response = await fetch(`${AUTH_URL}/auth/profile`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || 'Failed to update profile');
+    }
+    return response.json();
+};
+
 export const fetchWatchlist = async (token: string) => {
     try {
         const data = await fetchWithCache(`${AUTH_URL}/users/profile/watchlist`, {

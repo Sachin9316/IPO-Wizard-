@@ -13,6 +13,9 @@ interface UserProfileViewProps {
     navigation: any;
 }
 
+import { updateUser } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+
 export const UserProfileView = ({
     user,
     theme,
@@ -23,6 +26,8 @@ export const UserProfileView = ({
     const { colors } = useTheme();
     const { showAlert } = useUI();
     const { isPanMasked, togglePanMask } = usePreferences();
+    const { token, refreshProfile } = useAuth();
+    const [loadingEmailPref, setLoadingEmailPref] = React.useState(false);
 
     const handleLogout = () => {
         showAlert({
@@ -38,6 +43,34 @@ export const UserProfileView = ({
                 }
             ]
         });
+    };
+
+    const toggleEmailNotifications = async () => {
+        if (!token) return;
+
+        const currentPrefs = user?.emailPreferences || { newIpo: false, gmpUpdate: false };
+        const newValue = !currentPrefs.newIpo;
+
+        // Optimistic update handled by switch value, but we need to actually trigger API
+        setLoadingEmailPref(true);
+        try {
+            await updateUser(token, {
+                emailPreferences: {
+                    ...currentPrefs,
+                    newIpo: newValue
+                }
+            });
+            await refreshProfile();
+        } catch (error: any) {
+            console.error("Failed to update email preferences", error);
+            showAlert({
+                title: "Error",
+                message: "Failed to update settings",
+                type: 'error'
+            });
+        } finally {
+            setLoadingEmailPref(false);
+        }
     };
 
     return (
@@ -93,13 +126,33 @@ export const UserProfileView = ({
             <View style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'space-between', paddingVertical: 12 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                     <ShieldCheck size={20} color={colors.primary} />
-                    <Text style={[styles.menuButtonText, { color: colors.text }]}>Mask PAN</Text>
+                    <View>
+                        <Text style={[styles.menuButtonText, { color: colors.text }]}>Mask PAN</Text>
+                        <Text style={{ fontSize: 12, color: colors.text, opacity: 0.5 }}>Hide PAN details</Text>
+                    </View>
                 </View>
                 <Switch
                     value={isPanMasked}
                     onValueChange={togglePanMask}
                     trackColor={{ false: colors.border, true: colors.primary + '80' }}
                     thumbColor={isPanMasked ? colors.primary : '#f4f3f4'}
+                />
+            </View>
+
+            <View style={[styles.menuButton, { backgroundColor: colors.card, borderColor: colors.border, justifyContent: 'space-between', paddingVertical: 12 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                    <Mail size={20} color={colors.primary} />
+                    <View>
+                        <Text style={[styles.menuButtonText, { color: colors.text }]}>Email Notifications</Text>
+                        <Text style={{ fontSize: 12, color: colors.text, opacity: 0.5 }}>Get alerts for new IPOs</Text>
+                    </View>
+                </View>
+                <Switch
+                    value={user?.emailPreferences?.newIpo || false}
+                    onValueChange={toggleEmailNotifications}
+                    disabled={loadingEmailPref}
+                    trackColor={{ false: colors.border, true: colors.primary + '80' }}
+                    thumbColor={(user?.emailPreferences?.newIpo) ? colors.primary : '#f4f3f4'}
                 />
             </View>
 

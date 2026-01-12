@@ -8,7 +8,6 @@ import { ArrowLeft, CheckCircle, Heart } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { toggleWatchlist } from '../../services/api';
-import { useLazyGetIPODetailsQuery } from '../../services/ipoApi';
 import { SkeletonDetail } from '../../components/SkeletonDetail';
 import { useUI } from '../../context/UIContext';
 import { IPOHero } from '../../components/details/IPOHero';
@@ -21,39 +20,19 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
     const { colors } = useTheme();
     const { user, token, refreshProfile, isAuthenticated } = useAuth();
     const { showAlert } = useUI();
-    const itemParam: IPOData = route.params.item;
-    const [item, setItem] = useState<IPOData>(itemParam);
-    const [loading, setLoading] = React.useState(true);
 
-    const [triggerDetails] = useLazyGetIPODetailsQuery();
+    const item = route.params.item;
+    const [loading, setLoading] = React.useState(false);
 
-    const ipoId = item._id || item.id;
-
+    // Initial check for item validity if needed
     React.useEffect(() => {
-        let isMounted = true;
-        const fetchDetails = async () => {
-            try {
-                let fullDetails = null;
-                if (itemParam.type === 'SME') {
-                    fullDetails = await triggerDetails({ id: ipoId, type: 'sme' }).unwrap();
-                } else {
-                    fullDetails = await triggerDetails({ id: ipoId, type: 'mainboard' }).unwrap();
-                }
+        if (!item) {
+            navigation.goBack();
+        }
+    }, [item]);
 
-                if (isMounted && fullDetails) {
-                    setItem(prev => ({ ...prev, ...fullDetails }));
-                }
-            } catch (error) {
-                console.error("Failed to fetch IPO details", error);
-            } finally {
-                if (isMounted) setLoading(false);
-            }
-        };
-
-        fetchDetails();
-
-        return () => { isMounted = false; };
-    }, [ipoId, itemParam.type]);
+    // Derived values
+    const ipoId = item?._id || item?.id;
 
     const [localIsWatchlisted, setLocalIsWatchlisted] = useState(false);
     const toggleCount = useRef(0);
@@ -131,29 +110,29 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                 </View>
             </View>
 
-            {loading ? (
+            {loading || !item ? (
                 <SkeletonDetail />
             ) : (
                 <ScrollView
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
                 >
-                    <IPOHero item={item} />
+                    <IPOHero item={item!} />
 
-                    <IPOStats item={item} />
-
-                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                    <IPOTimeline item={item} />
+                    <IPOStats item={item!} />
 
                     <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-                    <IPOLotInfo item={item} />
+                    <IPOTimeline item={item!} />
+
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                    <IPOLotInfo item={item!} />
 
                     <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
                     <IPOQuickActions
-                        item={item}
+                        item={item!}
                         onOpenPdf={handleOpenPdf}
                         onShowAlert={showAlert}
                     />
@@ -161,7 +140,7 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
             )}
 
             {/* Floating Action Button for Allotment - Only for Closed/Listed IPOs */}
-            {!loading && item.status === 'Closed' && (
+            {!loading && item && item.status === 'Closed' && (
                 <TouchableOpacity
                     style={[
                         styles.fab,
@@ -172,6 +151,8 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                     ]}
                     disabled={false}
                     onPress={async () => {
+                        if (!item) return;
+
                         const hasRegistrar = (item.registrarName && item.registrarName !== "N/A") || (item.registrarLink && item.registrarLink !== "");
 
                         if (!hasRegistrar) {

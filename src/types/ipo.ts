@@ -29,6 +29,7 @@ export interface IPOData {
     isAllotmentOut?: boolean;
     rhpUrl?: string;
     drhpUrl?: string;
+    registrarName?: string;
     registrarLink?: string;
     swot?: {
         strengths: string[];

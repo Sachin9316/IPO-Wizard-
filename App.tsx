@@ -42,7 +42,9 @@ const AppContent = () => {
 
     return (
         <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
-            <NavigationContainer theme={theme === 'dark' ? MyDarkTheme : MyLightTheme}>
+            <NavigationContainer
+                theme={theme === 'dark' ? MyDarkTheme : MyLightTheme}
+            >
                 <RootNavigator />
                 <StatusBar style={theme === 'dark' ? 'light' : 'dark'} />
             </NavigationContainer>
