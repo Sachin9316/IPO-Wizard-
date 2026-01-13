@@ -199,10 +199,12 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 return;
             }
 
-            // Reset statuses to CHECKING only for those we are about to check? 
-            // Or just check everything? Logic above implied checking everything.
-            // Let's reset all to WAITING/CHECKING loop as before.
-            const initialLoopResults = mergedResults.map(r => ({ ...r, status: 'WAITING' as const, message: 'Waiting...' }));
+            // Only set WAITING for items that need checking
+            const initialLoopResults = mergedResults.map(r => {
+                const isCached = ['ALLOTTED', 'NOT_ALLOTTED', 'NOT_APPLIED'].includes(r.status);
+                if (isCached && !forceRefresh) return r;
+                return { ...r, status: 'WAITING' as const, message: 'Waiting...' };
+            });
             setResults(initialLoopResults);
 
             let completedCount = 0;
@@ -213,14 +215,41 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
                 const previousState = mergedResults.find(r => r.panNumber === p.panNumber);
                 const isCached = previousState && ['ALLOTTED', 'NOT_ALLOTTED', 'NOT_APPLIED'].includes(previousState.status);
-                const shouldForce = !isCached;
 
-                setResults(prev => prev.map(item => item.panNumber === p.panNumber ? { ...item, status: 'CHECKING', message: 'Checking...' } : item));
+                // Update UI to 'CHECKING' only if we don't have a final state or if we are forcing a refresh
+                // This prevents the infinite loader effect on already resolved items
+                if (!isCached || forceRefresh) {
+                    setResults(prev => prev.map(item => item.panNumber === p.panNumber ? { ...item, status: 'CHECKING', message: 'Checking...' } : item));
+                }
 
                 try {
                     // Pass registrarKey if found, otherwise pass rawRegistrarName
                     const registrarToSend = registrarKey || rawRegistrarName;
-                    const response = await checkAllotmentStatus(ipoName, registrarToSend, [p.panNumber], shouldForce);
+
+                    // POLLING LOGIC: Retry if status is CHECKING
+                    let pollAttempts = 0;
+                    const MAX_RETRIES = 15; // 30 seconds max wait
+                    const POLL_INTERVAL = 2000; // 2 seconds
+
+                    const pollStatus = async (): Promise<any> => {
+                        // Always call API, but respect forceRefresh flag
+                        const response = await checkAllotmentStatus(ipoName, registrarToSend, [p.panNumber], forceRefresh);
+
+                        if (response.success && response.data.length > 0) {
+                            const res = response.data[0];
+                            // If still checking and we have attempts left, wait and retry
+                            if (res.status === 'CHECKING' && pollAttempts < MAX_RETRIES) {
+                                pollAttempts++;
+                                await new Promise(r => setTimeout(r, POLL_INTERVAL));
+                                return pollStatus();
+                            }
+                            return response;
+                        }
+                        return response;
+                    };
+
+                    const response = await pollStatus();
+
                     const updateFunction = (item: AllotmentResult) => {
                         if (item.panNumber === p.panNumber) {
                             if (response.success && response.data.length > 0) {
@@ -230,6 +259,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                 if (finalMessage.includes('browserType.launch') || finalMessage.includes('playwright')) {
                                     finalStatus = 'NOT_APPLIED'; finalMessage = 'No record found';
                                 }
+                                // If max retries hit and still checking, show timeout or keep checking? 
+                                // Better to show 'CHECKING' but maybe with a "taking longer" message?
+                                // For now, passing through whatever final status we got (CHECKING or Done)
                                 return { ...item, status: finalStatus, units: res.units || 0, message: finalMessage, name: item.name, dpId: res.dpId };
                             } else {
                                 return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
@@ -246,7 +278,8 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
                 completedCount++;
                 setProgress(completedCount / allPans.length);
-                if (i < allPans.length - 1) await new Promise(r => setTimeout(r, 500));
+                // Reduced delay between PANs since we handle delay inside polling
+                if (i < allPans.length - 1) await new Promise(r => setTimeout(r, 100));
             }
             setHasError(false);
             AsyncStorage.setItem(CACHE_KEY, JSON.stringify(currentResultsState));
@@ -275,7 +308,28 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         setRefreshingPans(prev => new Set(prev).add(item.panNumber));
         try {
             const registrarToSend = registrarKey || rawRegistrarName;
-            const response = await checkAllotmentStatus(ipoName, registrarToSend, [item.panNumber], true);
+
+            // POLLING LOGIC for SINGLE PAN REFRESH
+            let pollAttempts = 0;
+            const MAX_RETRIES = 15;
+            const POLL_INTERVAL = 2000;
+
+            const pollStatus = async (): Promise<any> => {
+                const response = await checkAllotmentStatus(ipoName, registrarToSend, [item.panNumber], true);
+                if (response.success && response.data.length > 0) {
+                    const res = response.data[0];
+                    if (res.status === 'CHECKING' && pollAttempts < MAX_RETRIES) {
+                        pollAttempts++;
+                        await new Promise(r => setTimeout(r, POLL_INTERVAL));
+                        return pollStatus();
+                    }
+                    return response;
+                }
+                return response;
+            };
+
+            const response = await pollStatus();
+
             if (response.success && response.data.length > 0) {
                 const res = response.data[0];
                 setResults(prev => prev.map(r => r.panNumber === item.panNumber ? { ...r, status: res.status, units: res.units, message: res.message, name: r.name } : r));
@@ -306,7 +360,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const handleAddPan = async (data: { panNumber: string, name?: string }) => {
         try {
             if (results.some(r => r.panNumber === data.panNumber)) { Alert.alert("Duplicate", "PAN already exists."); return; }
-            let newResult: AllotmentResult = { panNumber: data.panNumber, name: data.name || 'New PAN', status: 'CHECKING', message: 'Checking...', source: isAuthenticated ? 'CLOUD' : 'LOCAL' };
+
+            // Fix: Initial status is WAITING, do not check immediately
+            let newResult: AllotmentResult = { panNumber: data.panNumber, name: data.name || 'New PAN', status: 'WAITING', message: 'Tap to check', source: isAuthenticated ? 'CLOUD' : 'LOCAL' };
 
             if (isAuthenticated && user && token) {
                 await addUserPAN(token, { panNumber: data.panNumber, name: data.name || '' });
@@ -325,25 +381,15 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             setResults(updatedList);
             setAllPanCount(prev => prev + 1);
 
-            const registrarKey = getRegistrarKey(ipo.registrarName || ipo.registrar || ipo.registrarLink);
-            const rawRegistrarName = ipo.registrarName || ipo.registrar || ipo.registrarLink;
+            // Trigger single check for the new PAN immediately
+            // We reuse handleRefreshPan which contains the safe polling logic
+            setTimeout(() => {
+                const itemToCheck = { ...newResult, status: 'CHECKING' as const, message: 'Checking...' };
+                setResults(prev => prev.map(r => r.panNumber === data.panNumber ? itemToCheck : r));
+                handleRefreshPan(itemToCheck);
+            }, 500);
 
-            // Allow checking if we have a name, even if key is null
-            if (rawRegistrarName) {
-                const registrarToSend = registrarKey || rawRegistrarName;
-                const response = await checkAllotmentStatus(ipoName, registrarToSend, [data.panNumber], true);
-                if (response.success && response.data.length > 0) {
-                    const res = response.data[0];
-                    updatedList = updatedList.map(item => item.panNumber === data.panNumber ? { ...item, status: res.status, units: res.units, message: res.message, name: res.name || item.name } : item);
-                } else {
-                    updatedList = updatedList.map(item => item.panNumber === data.panNumber ? { ...item, status: 'NOT_APPLIED', message: 'No record found' } : item);
-                }
-            } else {
-                updatedList = updatedList.map(item => item.panNumber === data.panNumber ? { ...item, status: 'UNKNOWN', message: 'Registrar not supported' } : item);
-            }
-            setResults(updatedList);
-            AsyncStorage.setItem(`ALLOTMENT_CACHE_${ipoName}`, JSON.stringify(updatedList));
-        } catch (error) { Alert.alert("Error", "Failed to save/check PAN."); }
+        } catch (error) { Alert.alert("Error", "Failed to save PAN."); }
     };
 
     const renderResultCard = ({ item, index }: { item: AllotmentResult, index: number }) => (
