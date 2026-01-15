@@ -13,8 +13,8 @@ export const CustomHeader = ({ title, showActions = true, showSearch = true, sho
     const insets = useSafeAreaInsets();
 
     return (
-        <View style={{ backgroundColor: colors.background, paddingTop: insets.top }}>
-            <View style={[styles.container, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <View style={{ backgroundColor: '#000', paddingTop: insets.top }}>
+            <View style={[styles.container, { backgroundColor: '#000', borderBottomColor: colors.border }]}>
                 <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
                 {showActions && (
                     <View style={styles.rightContainer}>

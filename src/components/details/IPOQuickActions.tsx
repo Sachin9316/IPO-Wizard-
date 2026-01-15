@@ -95,7 +95,8 @@ export const IPOQuickActions = ({ item, onOpenPdf, onShowAlert }: IPOQuickAction
 
 const styles = StyleSheet.create({
     sectionCompact: {
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingBottom: 24,
     },
     sectionTitleCompact: {
         fontSize: 15,

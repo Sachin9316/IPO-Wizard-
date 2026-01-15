@@ -23,7 +23,7 @@ export const BottomTabNavigator = () => {
                     return <CustomHeader title={route.name} />;
                 },
                 tabBarStyle: {
-                    backgroundColor: colors.card,
+                    backgroundColor: '#000',
                     borderTopWidth: 0,
                     elevation: 5,
                     shadowColor: '#000',

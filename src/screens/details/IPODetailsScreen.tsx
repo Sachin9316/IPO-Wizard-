@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { debounce } from 'lodash';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { IPOData } from '../../types/ipo';
 import { ArrowLeft, CheckCircle, Heart } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
+import { useGetIPODetailsQuery } from '../../services/ipoApi';
 import { toggleWatchlist } from '../../services/api';
 import { SkeletonDetail } from '../../components/SkeletonDetail';
 import { useUI } from '../../context/UIContext';
@@ -31,8 +32,36 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
         }
     }, [item]);
 
+
+
     // Derived values
     const ipoId = item?._id || item?.id;
+    const ipoType = (item?.type?.toLowerCase() as 'mainboard' | 'sme') || 'mainboard';
+
+    // Fetch fresh details
+    const { data: fetchedItem, isLoading: isFetching, refetch } = useGetIPODetailsQuery({
+        id: ipoId,
+        type: ipoType
+    }, {
+        skip: !ipoId
+    });
+
+    // Use fetched item if available, otherwise fallback to nav param
+    const displayItem = fetchedItem || item;
+    const isLoading = loading || isFetching;
+
+
+
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        try {
+            await refetch();
+        } finally {
+            setRefreshing(false);
+        }
+    }, [refetch]);
 
     const [localIsWatchlisted, setLocalIsWatchlisted] = useState(false);
     const toggleCount = useRef(0);
@@ -110,29 +139,26 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
                 </View>
             </View>
 
-            {loading || !item ? (
+            {isLoading || !displayItem ? (
                 <SkeletonDetail />
             ) : (
                 <ScrollView
                     contentContainerStyle={styles.content}
                     showsVerticalScrollIndicator={false}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+                    }
                 >
-                    <IPOHero item={item!} />
+                    <IPOHero item={displayItem!} />
 
-                    <IPOStats item={item!} />
+                    <IPOStats item={displayItem!} />
 
-                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    <IPOTimeline item={displayItem!} />
 
-                    <IPOTimeline item={item!} />
-
-                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                    <IPOLotInfo item={item!} />
-
-                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    <IPOLotInfo item={displayItem!} />
 
                     <IPOQuickActions
-                        item={item!}
+                        item={displayItem!}
                         onOpenPdf={handleOpenPdf}
                         onShowAlert={showAlert}
                     />
@@ -140,68 +166,76 @@ export const IPODetailsScreen = ({ route, navigation }: any) => {
             )}
 
             {/* Floating Action Button for Allotment - Only for Closed/Listed IPOs */}
-            {!loading && item && item.status === 'Closed' && (
-                <TouchableOpacity
-                    style={[
-                        styles.fab,
-                        {
-                            backgroundColor: item.isAllotmentOut ? colors.primary : '#333333',
-                            opacity: 1 // Always fully visible opacity-wise, just specialized color
-                        }
-                    ]}
-                    disabled={false}
-                    onPress={async () => {
-                        if (!item) return;
-
-                        const hasRegistrar = (item.registrarName && item.registrarName !== "N/A") || (item.registrarLink && item.registrarLink !== "");
-
-                        if (!hasRegistrar) {
-                            showAlert({
-                                title: "Registrar Not Assigned",
-                                message: "The registrar for this IPO has not been assigned yet. Please check back later.",
-                                type: 'info'
-                            });
-                            return;
-                        }
-
-                        if (!item.isAllotmentOut) {
-                            showAlert({
-                                title: "Allotment Not Out",
-                                message: "The allotment status for this IPO has not been announced yet. Please check back later!",
-                                type: 'info'
-                            });
-                            return;
-                        }
-
-                        // Check if user has ANY PANs (Local or Cloud)
-                        let hasPans = false;
-                        try {
-                            const storedLocal = await AsyncStorage.getItem('unsaved_pans');
-                            if (storedLocal && JSON.parse(storedLocal).length > 0) hasPans = true;
-
-                            if (!hasPans && isAuthenticated && user?.panDocuments?.length > 0) {
-                                hasPans = true;
+            {!isLoading && displayItem && displayItem.status === 'Closed' && (
+                <View style={styles.fabContainer}>
+                    <TouchableOpacity
+                        style={[
+                            styles.fab,
+                            {
+                                backgroundColor: displayItem.isAllotmentOut ? colors.primary : '#333333',
+                                opacity: 1,
+                                shadowColor: displayItem.isAllotmentOut ? colors.primary : "#000",
+                                shadowOpacity: displayItem.isAllotmentOut ? 0.6 : 0.3,
+                                shadowRadius: displayItem.isAllotmentOut ? 12 : 8,
                             }
-                        } catch (e) { console.error(e); }
+                        ]}
+                        activeOpacity={0.8}
+                        disabled={false}
+                        onPress={async () => {
+                            if (!displayItem) return;
 
-                        if (hasPans) {
-                            navigation.navigate('AllotmentResult', { ipo: item });
-                        } else {
-                            showAlert({
-                                title: "No PANs Found",
-                                message: "Please add at least one PAN in your Profile to check allotment.",
-                                type: 'info',
-                                buttons: [
-                                    { text: "Cancel", style: "cancel" },
-                                    { text: "Add PAN", onPress: () => navigation.navigate("Root", { screen: "PANs" }) }
-                                ]
-                            });
-                        }
-                    }}
-                >
-                    <CheckCircle color={(item.isAllotmentOut && ((item.registrarName && item.registrarName !== "N/A") || (item.registrarLink && item.registrarLink !== ""))) ? "#FFF" : "#888"} size={20} />
-                    <Text style={[styles.fabText, { color: (item.isAllotmentOut && ((item.registrarName && item.registrarName !== "N/A") || (item.registrarLink && item.registrarLink !== ""))) ? "#FFF" : "#888" }]}>Check Allotment</Text>
-                </TouchableOpacity>
+                            const hasRegistrar = (displayItem.registrarName && displayItem.registrarName !== "N/A") || (displayItem.registrarLink && displayItem.registrarLink !== "");
+
+                            if (!hasRegistrar) {
+                                showAlert({
+                                    title: "Registrar Not Assigned",
+                                    message: "The registrar for this IPO has not been assigned yet. Please check back later.",
+                                    type: 'info'
+                                });
+                                return;
+                            }
+
+                            if (!displayItem.isAllotmentOut) {
+                                showAlert({
+                                    title: "Allotment Not Out",
+                                    message: "The allotment status for this IPO has not been announced yet. Please check back later!",
+                                    type: 'info'
+                                });
+                                return;
+                            }
+
+                            // Check if user has ANY PANs (Local or Cloud)
+                            let hasPans = false;
+                            try {
+                                const storedLocal = await AsyncStorage.getItem('unsaved_pans');
+                                if (storedLocal && JSON.parse(storedLocal).length > 0) hasPans = true;
+
+                                if (!hasPans && isAuthenticated && user?.panDocuments?.length > 0) {
+                                    hasPans = true;
+                                }
+                            } catch (e) { console.error(e); }
+
+                            if (hasPans) {
+                                navigation.navigate('AllotmentResult', { ipo: displayItem });
+                            } else {
+                                showAlert({
+                                    title: "No PANs Found",
+                                    message: "Please add at least one PAN in your Profile to check allotment.",
+                                    type: 'info',
+                                    buttons: [
+                                        { text: "Cancel", style: "cancel" },
+                                        { text: "Add PAN", onPress: () => navigation.navigate("Root", { screen: "PANs" }) }
+                                    ]
+                                });
+                            }
+                        }}
+                    >
+                        <CheckCircle color={(displayItem.isAllotmentOut && ((displayItem.registrarName && displayItem.registrarName !== "N/A") || (displayItem.registrarLink && displayItem.registrarLink !== ""))) ? "#FFF" : "#888"} size={22} strokeWidth={2.5} />
+                        <Text style={[styles.fabText, { color: (displayItem.isAllotmentOut && ((displayItem.registrarName && displayItem.registrarName !== "N/A") || (displayItem.registrarLink && displayItem.registrarLink !== ""))) ? "#FFF" : "#888" }]}>
+                            {displayItem.isAllotmentOut ? "CHECK ALLOTMENT NOW" : "CHECK ALLOTMENT"}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             )}
 
         </SafeAreaView>
@@ -237,25 +271,31 @@ const styles = StyleSheet.create({
         marginVertical: 4,
         opacity: 0.5,
     },
-    fab: {
+    fabContainer: {
         position: 'absolute',
         bottom: 24,
-        left: 20,
-        right: 20,
+        left: 24,
+        right: 24,
+    },
+    fab: {
         height: 56,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 16,
+        borderRadius: 28, // Pill shape
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
         gap: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.1)'
     },
     fabText: {
-        fontWeight: '700',
+        fontWeight: '800', // Extra bold
         fontSize: 16,
+        letterSpacing: 0.5,
+        textTransform: 'uppercase'
     },
 });

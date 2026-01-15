@@ -20,7 +20,7 @@ export const TopTabNavigator = () => {
     return (
         <Tab.Navigator
             screenOptions={{
-                tabBarStyle: { backgroundColor: colors.background },
+                tabBarStyle: { backgroundColor: '#000' },
                 tabBarLabelStyle: { fontWeight: 'bold', textTransform: 'capitalize' },
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.text,

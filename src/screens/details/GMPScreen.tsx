@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, Easing } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { ArrowLeft, TrendingUp, Calendar } from 'lucide-react-native';
@@ -13,6 +13,28 @@ export const GMPScreen = ({ route, navigation }: any) => {
     const { ipo } = route.params;
     const gmpDetails = ipo?.gmpDetails;
     const name = ipo?.name;
+
+    // Live Tag Pulse Animation
+    const fadeAnim = React.useRef(new Animated.Value(0.4)).current;
+
+    React.useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 800,
+                    easing: Easing.inOut(Easing.ease),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(fadeAnim, {
+                    toValue: 0.4,
+                    duration: 800,
+                    easing: Easing.inOut(Easing.ease),
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+    }, []);
 
     if (!gmpDetails || gmpDetails.length === 0) {
         return (
@@ -71,7 +93,7 @@ export const GMPScreen = ({ route, navigation }: any) => {
 
             <ScrollView contentContainerStyle={styles.content}>
                 {/* Hero Card */}
-                <IPOHero item={ipo} style={{ paddingHorizontal: 0, paddingVertical: 0, marginBottom: 12 }} />
+                <IPOHero item={ipo} style={{ marginHorizontal: 0, marginTop: 0, marginBottom: 24 }} />
 
                 {/* Profit Summary Card */}
                 {(() => {
@@ -96,8 +118,8 @@ export const GMPScreen = ({ route, navigation }: any) => {
                     );
                 })()}
 
-                {/* Chart Section */}
-                {prices.length > 1 && (
+                {/* Chart Section - Commented Out */}
+                {/* {prices.length > 1 && (
                     <View style={[styles.chartCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 16 }}>
                             <Text style={[styles.chartTitle, { color: colors.text }]}>Price Movement</Text>
@@ -147,12 +169,25 @@ export const GMPScreen = ({ route, navigation }: any) => {
                             ← Scroll to view history →
                         </Text>
                     </View>
-                )}
+                )} */}
 
                 {/* List Section */}
                 <View style={styles.listContainer}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Daily Updates</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>Daily Updates</Text>
+                            <Animated.View style={{
+                                paddingHorizontal: 6,
+                                paddingVertical: 2,
+                                borderRadius: 4,
+                                backgroundColor: 'rgba(239, 68, 68, 0.2)', // Red-ish tint
+                                opacity: fadeAnim,
+                                borderWidth: 1,
+                                borderColor: 'rgba(239, 68, 68, 0.5)'
+                            }}>
+                                <Text style={{ color: '#EF4444', fontSize: 10, fontWeight: 'bold' }}>LIVE</Text>
+                            </Animated.View>
+                        </View>
                         <Text style={{ fontSize: 10, color: colors.text, opacity: 0.5 }}>
                             Last updated {gmpDetails.length > 0 ? (() => {
                                 const dateStr = gmpDetails[gmpDetails.length - 1].date;
@@ -160,7 +195,7 @@ export const GMPScreen = ({ route, navigation }: any) => {
                                 try {
                                     const date = new Date(dateStr.match(/\d{4}/) ? dateStr : `${dateStr} ${new Date().getFullYear()}`);
                                     return !isNaN(date.getTime())
-                                        ? date.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                        ? date.toLocaleString('en-US', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', hour12: true })
                                         : dateStr;
                                 } catch (e) { return dateStr; }
                             })() : '-'}
@@ -228,8 +263,22 @@ export const GMPScreen = ({ route, navigation }: any) => {
 
                         return (
                             <View key={index} style={[styles.row, { borderBottomColor: colors.border }]}>
-                                <View style={[styles.dateCol, { flex: 1.3 }]}>
-                                    <Text style={[styles.cellText, { color: colors.text, fontSize: 12 }]}>{formattedDate}</Text>
+                                <View style={[styles.dateCol, { flex: 1.3, flexDirection: 'column', alignItems: 'flex-start' }]}>
+                                    <Text style={[styles.cellText, { color: colors.text, fontSize: 12, fontWeight: '600' }]}>{formattedDate}</Text>
+                                    <Text style={{ color: colors.text, fontSize: 10, opacity: 0.6, marginTop: 2 }}>
+                                        {(() => {
+                                            const timeMatch = item.date.match(/(\d{1,2}:\d{2})/);
+                                            if (timeMatch) {
+                                                const [hours, minutes] = timeMatch[0].split(':').map(Number);
+                                                const suffix = hours >= 12 ? 'PM' : 'AM';
+                                                const h = hours % 12 || 12;
+                                                return `${h}:${minutes.toString().padStart(2, '0')} ${suffix}`;
+                                            }
+                                            return !isNaN(dateObj.getTime())
+                                                ? dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+                                                : '';
+                                        })()}
+                                    </Text>
                                 </View>
 
                                 <Text style={[styles.col, styles.priceText, { color: item.price >= 0 ? '#4CAF50' : '#F44336', flex: 0.9, textAlign: 'right' }]}>

@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Animated, Easing, Share, RefreshControl, Alert, InteractionManager, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import { XCircle } from 'lucide-react-native';
+import { XCircle, RotateCw } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import { useUI } from '../../context/UIContext';
@@ -13,6 +13,7 @@ import { AddPANBottomSheet } from '../../components/AddPANBottomSheet';
 import { AllotmentSkeleton } from '../../components/AllotmentSkeleton';
 import { AllotmentHeader } from '../../components/allotment/AllotmentHeader';
 import { AllotmentFilterHeader } from '../../components/allotment/AllotmentFilterHeader';
+import { debounce } from 'lodash';
 
 interface PANData {
     panNumber: string;
@@ -45,9 +46,36 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     const [allPanCount, setAllPanCount] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
     const [refreshingPans, setRefreshingPans] = useState<Set<string>>(new Set());
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [hasError, setHasError] = useState(false);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
+    const spinValue = useRef(new Animated.Value(0)).current;
+
+    const isCheckingAny = results.some(r => r.status === 'CHECKING' || r.status === 'WAITING');
+    const shouldSpin = loading || isRefreshing || isCheckingAny;
+
+    useEffect(() => {
+        if (shouldSpin) {
+            spinValue.setValue(0);
+            Animated.loop(
+                Animated.timing(spinValue, {
+                    toValue: 1,
+                    duration: 1000,
+                    easing: Easing.linear,
+                    useNativeDriver: true,
+                })
+            ).start();
+        } else {
+            spinValue.stopAnimation();
+            spinValue.setValue(0);
+        }
+    }, [shouldSpin]);
+
+    const spin = spinValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['0deg', '360deg']
+    });
 
     useEffect(() => {
         const runTask = async () => {
@@ -96,6 +124,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
     };
 
     const checkAllotment = async (forceRefresh = false, skipApiCheck = false) => {
+        if (forceRefresh) setIsRefreshing(true);
         const CACHE_KEY = `ALLOTMENT_CACHE_${ipoName}`;
 
         // 1. Load PANs (Moved to top to validate cache)
@@ -124,6 +153,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
         if (allPans.length === 0) {
             setLoading(false);
+            setIsRefreshing(false);
             setResults([]); // Ensure results are cleared if no PANs
             return;
         }
@@ -145,8 +175,6 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                     });
 
                     // Only return early if we have a result for EVERY current PAN
-                    // And checking if we shouldn't force refresh for any reason?
-                    // Let's just use the merge logic if counts mismatch.
                     if (refreshedCache.length === allPans.length) {
                         setResults(refreshedCache);
                         setLoading(false);
@@ -165,9 +193,7 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             const rawRegistrarName = ipo.registrarName || ipo.registrar || ipo.registrarLink;
             const registrarKey = getRegistrarKey(rawRegistrarName);
 
-            // (Old Step 2 removed)
-
-            // 3. Prepare Initial Results (Merge with Cache/Existing to avoid resetting to WAITING if skipping API)
+            // 3. Prepare Initial Results
             let cachedResults: AllotmentResult[] = [];
             try {
                 const cachedData = await AsyncStorage.getItem(CACHE_KEY);
@@ -177,7 +203,6 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             const mergedResults: AllotmentResult[] = allPans.map(p => {
                 const existing = cachedResults.find(r => r.panNumber === p.panNumber) || results.find(r => r.panNumber === p.panNumber);
                 if (existing) {
-                    // Update name/source if changed, keep status
                     return { ...existing, name: p.name, source: p.source, status: existing.status === 'CHECKING' ? 'WAITING' : existing.status };
                 }
                 return {
@@ -192,10 +217,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             }).start();
 
             // 4. API Check Loop (Skip if requested)
-            // Fix: Do NOT skip if registrarKey is null. Pass the raw name to backend.
             if (skipApiCheck) {
-                // If skipping, ensuring we save the merged state to cache so we don't lose the "WAITING" entries or updates
                 AsyncStorage.setItem(CACHE_KEY, JSON.stringify(mergedResults));
+                setIsRefreshing(false);
                 return;
             }
 
@@ -216,28 +240,22 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                 const previousState = mergedResults.find(r => r.panNumber === p.panNumber);
                 const isCached = previousState && ['ALLOTTED', 'NOT_ALLOTTED', 'NOT_APPLIED'].includes(previousState.status);
 
-                // Update UI to 'CHECKING' only if we don't have a final state or if we are forcing a refresh
-                // This prevents the infinite loader effect on already resolved items
                 if (!isCached || forceRefresh) {
                     setResults(prev => prev.map(item => item.panNumber === p.panNumber ? { ...item, status: 'CHECKING', message: 'Checking...' } : item));
                 }
 
                 try {
-                    // Pass registrarKey if found, otherwise pass rawRegistrarName
                     const registrarToSend = registrarKey || rawRegistrarName;
 
-                    // POLLING LOGIC: Retry if status is CHECKING
                     let pollAttempts = 0;
-                    const MAX_RETRIES = 15; // 30 seconds max wait
-                    const POLL_INTERVAL = 2000; // 2 seconds
+                    const MAX_RETRIES = 15;
+                    const POLL_INTERVAL = 2000;
 
                     const pollStatus = async (): Promise<any> => {
-                        // Always call API, but respect forceRefresh flag
                         const response = await checkAllotmentStatus(ipoName, registrarToSend, [p.panNumber], forceRefresh);
 
                         if (response.success && response.data.length > 0) {
                             const res = response.data[0];
-                            // If still checking and we have attempts left, wait and retry
                             if (res.status === 'CHECKING' && pollAttempts < MAX_RETRIES) {
                                 pollAttempts++;
                                 await new Promise(r => setTimeout(r, POLL_INTERVAL));
@@ -259,9 +277,6 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                                 if (finalMessage.includes('browserType.launch') || finalMessage.includes('playwright')) {
                                     finalStatus = 'NOT_APPLIED'; finalMessage = 'No record found';
                                 }
-                                // If max retries hit and still checking, show timeout or keep checking? 
-                                // Better to show 'CHECKING' but maybe with a "taking longer" message?
-                                // For now, passing through whatever final status we got (CHECKING or Done)
                                 return { ...item, status: finalStatus, units: res.units || 0, message: finalMessage, name: item.name, dpId: res.dpId };
                             } else {
                                 return { ...item, status: 'NOT_APPLIED', message: 'No record found' };
@@ -278,7 +293,6 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
 
                 completedCount++;
                 setProgress(completedCount / allPans.length);
-                // Reduced delay between PANs since we handle delay inside polling
                 if (i < allPans.length - 1) await new Promise(r => setTimeout(r, 100));
             }
             setHasError(false);
@@ -287,6 +301,8 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             console.error(error);
             setLoading(false);
             setHasError(true);
+        } finally {
+            setIsRefreshing(false);
         }
     };
 
@@ -295,6 +311,15 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || item.panNumber.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesSource = filterSource === 'ALL' ? true : item.source === filterSource;
         return matchesSearch && matchesSource;
+    }).sort((a, b) => {
+        const priority: { [key: string]: number } = {
+            'ALLOTTED': 1,
+            'NOT_ALLOTTED': 2,
+            'NOT_APPLIED': 3
+        };
+        const p1 = priority[a.status] || 4;
+        const p2 = priority[b.status] || 4;
+        return p1 - p2;
     });
 
     const [activeMenuPan, setActiveMenuPan] = useState<string | null>(null);
@@ -303,13 +328,11 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         if (refreshingPans.has(item.panNumber)) return;
         const rawRegistrarName = ipo.registrarName || ipo.registrar || ipo.registrarLink;
         const registrarKey = getRegistrarKey(rawRegistrarName);
-        // if (!registrarKey) { Alert.alert("Unsupported Registrar", "Manual check required."); return; }
 
         setRefreshingPans(prev => new Set(prev).add(item.panNumber));
         try {
             const registrarToSend = registrarKey || rawRegistrarName;
 
-            // POLLING LOGIC for SINGLE PAN REFRESH
             let pollAttempts = 0;
             const MAX_RETRIES = 15;
             const POLL_INTERVAL = 2000;
@@ -338,7 +361,9 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         finally { setRefreshingPans(prev => { const next = new Set(prev); next.delete(item.panNumber); return next; }); }
     };
 
-    const onRefresh = React.useCallback(async () => { await checkAllotment(true, false); }, [ipo.registrarName]);
+    const onRefresh = () => {
+        checkAllotment(true, false);
+    };
 
     const handleReportPress = (item: AllotmentResult) => {
         setActiveMenuPan(null);
@@ -361,18 +386,17 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
         try {
             if (results.some(r => r.panNumber === data.panNumber)) { Alert.alert("Duplicate", "PAN already exists."); return; }
 
-            // Fix: Initial status is WAITING, do not check immediately
-            let newResult: AllotmentResult = { panNumber: data.panNumber, name: data.name || 'New PAN', status: 'WAITING', message: 'Tap to check', source: isAuthenticated ? 'CLOUD' : 'LOCAL' };
+            let newResult: AllotmentResult = { panNumber: data.panNumber, name: data.name || data.panNumber, status: 'WAITING', message: 'Tap to check', source: isAuthenticated ? 'CLOUD' : 'LOCAL' };
 
             if (isAuthenticated && user && token) {
-                await addUserPAN(token, { panNumber: data.panNumber, name: data.name || '' });
+                await addUserPAN(token, { panNumber: data.panNumber, name: data.name || data.panNumber });
                 await refreshProfile();
                 showToast({ message: "PAN saved to account", type: "success" });
             } else {
                 const stored = await AsyncStorage.getItem('unsaved_pans');
                 const currentPans = stored ? JSON.parse(stored) : [];
                 if (!currentPans.some((p: any) => p.panNumber === data.panNumber)) {
-                    await AsyncStorage.setItem('unsaved_pans', JSON.stringify([...currentPans, { id: Date.now().toString(), panNumber: data.panNumber, name: data.name }]));
+                    await AsyncStorage.setItem('unsaved_pans', JSON.stringify([...currentPans, { id: Date.now().toString(), panNumber: data.panNumber, name: data.name || data.panNumber }]));
                     showToast({ message: "PAN saved locally", type: "success" });
                 }
             }
@@ -381,8 +405,6 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
             setResults(updatedList);
             setAllPanCount(prev => prev + 1);
 
-            // Trigger single check for the new PAN immediately
-            // We reuse handleRefreshPan which contains the safe polling logic
             setTimeout(() => {
                 const itemToCheck = { ...newResult, status: 'CHECKING' as const, message: 'Checking...' };
                 setResults(prev => prev.map(r => r.panNumber === data.panNumber ? itemToCheck : r));
@@ -419,12 +441,38 @@ export const AllotmentResultScreen = ({ route, navigation }: any) => {
                         <AllotmentStats results={filteredResults} />
                         <FlatList
                             data={filteredResults} keyExtractor={item => item.panNumber} renderItem={renderResultCard}
-                            contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 40 }}
+                            contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 80 }}
                             onScrollBeginDrag={() => { if (activeMenuPan) setActiveMenuPan(null); }}
-                            refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} colors={[colors.primary]} />}
                             ListEmptyComponent={<Text style={{ textAlign: 'center', marginTop: 32, color: colors.text, opacity: 0.6 }}>No results.</Text>}
-                            ListFooterComponent={<Text style={{ textAlign: 'center', fontSize: 12, color: colors.text, opacity: 0.4, marginTop: 24, marginBottom: 16 }}>Pull down to refresh and see updated results</Text>}
                         />
+
+                        {/* Floating Refresh Button */}
+                        <TouchableOpacity
+                            onPress={onRefresh}
+                            disabled={shouldSpin}
+                            style={{
+                                position: 'absolute',
+                                bottom: 24,
+                                right: 24,
+                                backgroundColor: colors.primary,
+                                width: 56,
+                                height: 56,
+                                borderRadius: 28,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                elevation: 6,
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.3,
+                                shadowRadius: 4.65,
+                                zIndex: 100,
+                                opacity: shouldSpin ? 0.8 : 1
+                            }}
+                        >
+                            <Animated.View style={{ transform: [{ rotate: spin }] }}>
+                                <RotateCw color="#FFF" size={26} />
+                            </Animated.View>
+                        </TouchableOpacity>
                     </View>
                 ) : hasError ? (
                     <View style={styles.centerContainer}>

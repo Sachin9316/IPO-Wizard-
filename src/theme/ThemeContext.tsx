@@ -7,6 +7,7 @@ interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
   colors: {
+    notification: ColorValue | undefined;
     background: string;
     text: string;
     card: string;

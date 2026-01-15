@@ -11,24 +11,51 @@ export const IPOHero = ({ item, style }: IPOHeroProps) => {
     const { colors } = useTheme();
 
     return (
-        <View style={[styles.compactHeader, style]}>
-            <View style={[styles.heroContainer, { backgroundColor: colors.card }]}>
-                <View style={[styles.logoContainerLarge, { backgroundColor: colors.background }]}>
-                    {item.logoUrl ? (
-                        <Image source={{ uri: item.logoUrl }} style={styles.logoLarge} resizeMode="contain" />
-                    ) : (
-                        <Text style={{ color: colors.text, fontSize: 20, fontWeight: 'bold' }}>{item.name.charAt(0)}</Text>
-                    )}
+        <View style={[
+            styles.container,
+            {
+                borderColor: colors.border
+            },
+            style
+        ]}>
+            <View style={styles.logoContainer}>
+                {item.logoUrl ? (
+                    <Image source={{ uri: item.logoUrl }} style={styles.logo} resizeMode="contain" />
+                ) : (
+                    <View style={[styles.placeholderLogo, { backgroundColor: colors.background }]}>
+                        <Text style={{ color: colors.text, fontSize: 22, fontWeight: 'bold' }}>{item.name.charAt(0)}</Text>
+                    </View>
+                )}
+            </View>
+
+            <View style={styles.content}>
+                <View style={styles.titleRow}>
+                    <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
                 </View>
-                <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <Text style={[styles.companyNameLarge, { color: colors.text }]} numberOfLines={2}>{item.name}</Text>
-                    <View style={styles.badgesRow}>
-                        <View style={[styles.badgePill, { borderColor: colors.primary, backgroundColor: colors.primary + '10', paddingVertical: 2, paddingHorizontal: 6 }]}>
-                            <Text style={[styles.badgeText, { color: colors.primary, fontSize: 10 }]}>{item.type}</Text>
-                        </View>
-                        <View style={[styles.badgePill, { borderColor: item.status === 'Open' ? '#4CAF50' : colors.text + '40', backgroundColor: item.status === 'Open' ? '#4CAF5010' : 'transparent', paddingVertical: 2, paddingHorizontal: 6 }]}>
-                            <Text style={[styles.badgeText, { color: item.status === 'Open' ? '#4CAF50' : colors.text, opacity: item.status === 'Open' ? 1 : 0.5, fontSize: 10 }]}>{item.status}</Text>
-                        </View>
+
+                <View style={styles.badgeRow}>
+                    {/* Size/Type Badge - Theme Color */}
+                    <View style={[styles.badge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
+                        <Text style={[styles.badgeText, { color: colors.primary }]}>{item.type}</Text>
+                    </View>
+
+                    {/* Status Badge - Red for Closed, Green for Open */}
+                    <View style={[
+                        styles.badge,
+                        {
+                            backgroundColor: item.status === 'Closed' ? '#EF444415' : (item.status === 'Open' ? '#4CAF5015' : colors.card),
+                            borderColor: item.status === 'Closed' ? '#EF444430' : (item.status === 'Open' ? '#4CAF5030' : colors.border)
+                        }
+                    ]}>
+                        <Text style={[
+                            styles.badgeText,
+                            {
+                                color: item.status === 'Closed' ? '#EF4444' : (item.status === 'Open' ? '#4CAF50' : colors.text),
+                                opacity: item.status === 'Closed' || item.status === 'Open' ? 1 : 0.6
+                            }
+                        ]}>
+                            {item.status}
+                        </Text>
                     </View>
                 </View>
             </View>
@@ -37,50 +64,59 @@ export const IPOHero = ({ item, style }: IPOHeroProps) => {
 };
 
 const styles = StyleSheet.create({
-    compactHeader: {
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    heroContainer: {
+    container: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
+        padding: 16,
+        marginHorizontal: 16,
+        marginTop: 16,
+        marginBottom: 8,
         borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.03)',
-        marginBottom: 16,
+        borderWidth: 1,
     },
-    logoContainerLarge: {
-        width: 56,
-        height: 56,
-        // borderRadius: 14, // Removed as per user request
-        marginRight: 16,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'transparent',
+    logoContainer: {
+        width: 52,
+        height: 52,
+        marginRight: 14,
+        borderRadius: 10,
+        overflow: 'hidden',
     },
-    logoLarge: {
+    logo: {
         width: '100%',
         height: '100%',
-        // borderRadius: 14, // Removed as per user request
     },
-    companyNameLarge: {
+    placeholderLogo: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 10,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    titleRow: {
+        marginBottom: 8,
+    },
+    title: {
         fontSize: 18,
-        fontWeight: 'bold',
-        marginBottom: 6,
+        fontWeight: '700',
+        lineHeight: 24,
     },
-    badgesRow: {
+    badgeRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
     },
-    badgePill: {
+    badge: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
         borderWidth: 1,
-        borderRadius: 12,
-        paddingHorizontal: 10,
-        paddingVertical: 4,
     },
     badgeText: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '700',
         textTransform: 'uppercase',
     },

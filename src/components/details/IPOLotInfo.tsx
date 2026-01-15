@@ -7,15 +7,22 @@ interface IPOLotInfoProps {
     item: IPOData;
 }
 
-const LotRow = ({ label, lots, shares, amount, colors, isLast }: any) => {
+const LotRow = ({ label, lots, shares, amount, colors, isLast, index }: any) => {
     return (
-        <View style={[styles.lotRow, isLast && { borderBottomWidth: 0 }, { borderBottomColor: colors.border }]}>
+        <View style={[
+            styles.lotRow,
+            {
+                backgroundColor: index % 2 === 0 ? 'transparent' : colors.card,
+                borderBottomWidth: isLast ? 0 : 1,
+                borderBottomColor: colors.border
+            }
+        ]}>
             <View style={styles.lotRowLeft}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{label}</Text>
-                <Text style={{ fontSize: 11, color: colors.text, opacity: 0.5, marginTop: 2 }}>{lots} Lot • {shares} Shares</Text>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{label}</Text>
+                <Text style={{ fontSize: 11, color: colors.text, opacity: 0.5, marginTop: 2 }}>{lots} Lot ({shares} Shares)</Text>
             </View>
             <View style={styles.lotRowRight}>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text }}>₹{amount.toLocaleString('en-IN')}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary }}>₹{amount.toLocaleString('en-IN')}</Text>
             </View>
         </View>
     );
@@ -27,7 +34,7 @@ export const IPOLotInfo = ({ item }: IPOLotInfoProps) => {
     return (
         <View style={styles.sectionCompact}>
             <Text style={[styles.sectionTitleCompact, { color: colors.text }]}>Min Investment</Text>
-            <View style={styles.verticalLotList}>
+            <View style={[styles.tableContainer, { borderColor: colors.border, borderWidth: 1 }]}>
                 {(() => {
                     const lotSizeNum = parseInt(item.lotSize);
                     const lotAmount = (item.maxPrice || 0) * lotSizeNum;
@@ -37,8 +44,8 @@ export const IPOLotInfo = ({ item }: IPOLotInfoProps) => {
                     if (isSME) {
                         return (
                             <>
-                                <LotRow label="Retail (Min)" lots={1} shares={lotSizeNum} amount={lotAmount} colors={colors} />
-                                <LotRow label="HNI (Min)" lots={2} shares={lotSizeNum * 2} amount={lotAmount * 2} colors={colors} isLast />
+                                <LotRow label="Retail (Min)" lots={1} shares={lotSizeNum} amount={lotAmount} colors={colors} index={0} />
+                                <LotRow label="HNI (Min)" lots={2} shares={lotSizeNum * 2} amount={lotAmount * 2} colors={colors} isLast index={1} />
                             </>
                         );
                     }
@@ -50,11 +57,11 @@ export const IPOLotInfo = ({ item }: IPOLotInfoProps) => {
 
                     return (
                         <>
-                            <LotRow label="Retail (Min)" lots={1} shares={lotSizeNum} amount={lotAmount} colors={colors} />
-                            <LotRow label="Retail (Max)" lots={retailMaxLots} shares={lotSizeNum * retailMaxLots} amount={lotAmount * retailMaxLots} colors={colors} />
-                            <LotRow label="sNII (Min)" lots={shniMinLots} shares={lotSizeNum * shniMinLots} amount={lotAmount * shniMinLots} colors={colors} />
-                            <LotRow label="sNII (Max)" lots={shniMaxLots} shares={lotSizeNum * shniMaxLots} amount={lotAmount * shniMaxLots} colors={colors} />
-                            <LotRow label="bNII (Min)" lots={bhniMinLots} shares={lotSizeNum * bhniMinLots} amount={lotAmount * bhniMinLots} colors={colors} isLast />
+                            <LotRow label="Retail (Min)" lots={1} shares={lotSizeNum} amount={lotAmount} colors={colors} index={0} />
+                            <LotRow label="Retail (Max)" lots={retailMaxLots} shares={lotSizeNum * retailMaxLots} amount={lotAmount * retailMaxLots} colors={colors} index={1} />
+                            <LotRow label="sNII (Min)" lots={shniMinLots} shares={lotSizeNum * shniMinLots} amount={lotAmount * shniMinLots} colors={colors} index={2} />
+                            <LotRow label="sNII (Max)" lots={shniMaxLots} shares={lotSizeNum * shniMaxLots} amount={lotAmount * shniMaxLots} colors={colors} index={3} />
+                            <LotRow label="bNII (Min)" lots={bhniMinLots} shares={lotSizeNum * bhniMinLots} amount={lotAmount * bhniMinLots} colors={colors} isLast index={4} />
                         </>
                     );
                 })()}
@@ -65,23 +72,24 @@ export const IPOLotInfo = ({ item }: IPOLotInfoProps) => {
 
 const styles = StyleSheet.create({
     sectionCompact: {
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingBottom: 24,
     },
     sectionTitleCompact: {
-        fontSize: 15,
+        fontSize: 18,
         fontWeight: '700',
-        marginBottom: 12,
+        marginBottom: 16,
     },
-    verticalLotList: {
-        paddingTop: 8,
+    tableContainer: {
+        borderRadius: 16,
+        overflow: 'hidden',
     },
     lotRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
     },
     lotRowLeft: {
         flexDirection: 'column',

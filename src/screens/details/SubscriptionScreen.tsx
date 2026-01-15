@@ -46,7 +46,7 @@ export const SubscriptionScreen = ({ route, navigation }: any) => {
 
             <ScrollView contentContainerStyle={styles.content}>
                 {/* Hero Card for Total */}
-                <IPOHero item={ipo} style={{ paddingHorizontal: 0, paddingVertical: 0, marginBottom: 12 }} />
+                <IPOHero item={ipo} style={{ marginHorizontal: 0, marginTop: 0, marginBottom: 16 }} />
 
                 {/* Hero Card for Total */}
                 <SubscriptionHero total={total} />
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     },
     grid: {
         gap: 16,
-        marginTop: 20,
+        marginTop: 0,
     },
     row: {
         flexDirection: 'row',
