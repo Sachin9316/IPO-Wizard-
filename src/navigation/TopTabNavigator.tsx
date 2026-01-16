@@ -30,9 +30,10 @@ export const TopTabNavigator = () => {
                     borderRadius: 3,
                     marginBottom: 2
                 },
-                tabBarScrollEnabled: false,
-                tabBarItemStyle: { flex: 1 },
-                tabBarIndicatorContainerStyle: { justifyContent: 'center' },
+                tabBarScrollEnabled: true,
+                tabBarItemStyle: { width: 'auto', paddingHorizontal: 20 },
+                tabBarIndicatorContainerStyle: { justifyContent: 'flex-end' },
+                lazy: true,
             }}
         >
             <Tab.Screen

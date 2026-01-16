@@ -138,11 +138,7 @@ export const useIPOList = ({ type, token, isAuthenticated }: UseIPOListProps) =>
             }
         };
 
-        if (Platform.OS === 'web') {
-            executeLoad();
-        } else {
-            InteractionManager.runAfterInteractions(executeLoad);
-        }
+        executeLoad();
     }, [type, token, isAuthenticated, triggerIPOs, triggerWatchlist]);
 
     useEffect(() => {
