@@ -147,36 +147,7 @@ const IPOCardBase = ({ item, onPress }: IPOCardProps) => {
 
                         <View style={styles.verticalDivider} />
 
-                        <View style={[styles.statItem, { flex: 1.0 }]}>
-                            <Text style={[styles.statLabel, { color: colors.text }]}>Lot Price</Text>
-                            <Text style={[styles.statValue, { color: colors.text }]}>
-                                {(() => {
-                                    // Robust Price Calculation
-                                    const clean = (str: string) => (str || '').replace(/,/g, '');
-                                    const prices = clean(item.priceRange || '').match(/(\d+(\.\d+)?)/g)?.map(Number) || [];
-                                    const maxPrice = prices.length > 0 ? Math.max(...prices) : (item.maxPrice || 0);
 
-                                    // Robust Lot Size Parsing
-                                    const lotSizeStr = String(item.lotSize || '');
-                                    const lotSize = parseFloat(clean(lotSizeStr).match(/(\d+)/)?.[0] || '0');
-
-                                    const lotVal = maxPrice * lotSize;
-
-                                    if (lotVal > 0) {
-                                        return (
-                                            <Text style={{ textAlign: 'center' }}>
-                                                <Text style={{ fontSize: 13, fontWeight: '500', color: colors.text }}>
-                                                    ₹{lotVal.toLocaleString('en-IN')}
-                                                </Text>
-                                            </Text>
-                                        );
-                                    }
-                                    return item.lotSize;
-                                })()}
-                            </Text>
-                        </View>
-
-                        <View style={styles.verticalDivider} />
 
                         <View style={[styles.statItem, { flex: 0.8 }]}>
                             <Text style={[styles.statLabel, { color: colors.text }]}>Subs</Text>
