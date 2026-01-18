@@ -247,16 +247,18 @@ export const startMagicLogin = async (email: string) => {
             body: JSON.stringify({ email }),
         });
         const text = await response.text();
+        let data;
         try {
-            const data = JSON.parse(text);
-            if (!response.ok) {
-                throw new Error(data.message || 'Magic link request failed');
-            }
-            return data;
+            data = JSON.parse(text);
         } catch (jsonError) {
             console.error("JSON Parse Error:", jsonError, "Response Text:", text);
             throw new Error(`Server returned unexpected response: ${text.substring(0, 50)}...`);
         }
+
+        if (!response.ok) {
+            throw new Error(data.message || 'Magic link request failed');
+        }
+        return data;
     } catch (e) {
         throw e;
     }
